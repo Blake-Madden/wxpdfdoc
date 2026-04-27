@@ -93,7 +93,7 @@ public:
   * distribution and warehouse industry.
   * \param xpos: abscissa of barcode
   * \param ypos: ordinate of barcode
-  * \param code: value of barcode (Note: if the length of the code is not even, a 0 is preprended.)
+  * \param code: value of barcode (Note: if the length of the code is not even, a 0 is prepended.)
   * \param basewidth: corresponds to the width of a wide bar (defaults to 1)
   * \param height: bar height (defaults to 10)
   */

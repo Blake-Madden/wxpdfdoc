@@ -141,7 +141,7 @@ public:
 
   /// Set font style
   /**
-  * \param style the style of the font. Vaild values are
+  * \param style the style of the font. Valid values are
   *   \li wxPDF_FONTSTYLE_REGULAR
   *   \li wxPDF_FONTSTYLE_BOLD
   *   \li wxPDF_FONTSTYLE_ITALIC
@@ -535,7 +535,7 @@ public:
   */
   virtual bool HasVoltData() const { return false; }
 
-  /// Applay VOLT data
+  /// Apply VOLT data
   /**
   * \param s text string for which VOLT data should be applied
   * \return text string modified according to the VOLT data
@@ -770,7 +770,7 @@ protected:
 
   bool                  m_cff;             ///< Flag whether the font has a CFF table
   size_t                m_cffOffset;       ///< Offset of the CFF table of a TrueType/OpenType font
-  size_t                m_cffLength;       ///< Lenght of the CFF table of a TrueType/OpenType font
+  size_t                m_cffLength;       ///< Length of the CFF table of a TrueType/OpenType font
 
   wxString              m_cmap;            ///< CMap of a CID font
   wxString              m_ordering;        ///< Ordering of a CID font

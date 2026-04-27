@@ -58,11 +58,11 @@ public:
   */
   void LineTo(double x, double y);
 
-  /// Add a cubic Bezier curve to the shape
+  /// Add a cubic Bézier curve to the shape
   /**
-  * Append a cubic Bezier curve to the current path. The curve extends
+  * Append a cubic Bézier curve to the current path. The curve extends
   * from the current point to the point (x3, y3), using (x1, y1) and (x2, y2)
-  * as the Bezier control points. The new current point is (x3, y3).
+  * as the Bézier control points. The new current point is (x3, y3).
   * \param x1: Abscissa of control point 1
   * \param y1: Ordinate of control point 1
   * \param x2: Abscissa of control point 2

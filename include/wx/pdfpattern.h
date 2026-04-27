@@ -102,7 +102,7 @@ private:
   wxPdfPatternStyle m_patternStyle; ///< pattern style
   wxPdfImage* m_image; ///< image
   int      m_templateId; ///< template id
-  wxColour m_drawColour; ///< foregorund colour
+  wxColour m_drawColour; ///< foreground colour
   wxColour m_fillColour; ///< background colour
   bool     m_hasFillColour; ///< flag whether background colour is defined for the pattern
 

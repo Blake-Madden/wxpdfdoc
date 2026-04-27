@@ -102,7 +102,7 @@ public:
 #endif
 
 protected:
-  wxMBConv* m_conv;   ///< Assocated encoding converter
+  wxMBConv* m_conv;   ///< Associated encoding converter
 };
 
 #if wxUSE_UNICODE

@@ -206,7 +206,7 @@ wxPdfImage::ConvertWxImage(const wxImage& image, bool jpegFormat)
 bool
 wxPdfImage::Parse()
 {
-  // Check whether this image originated from an wxImage and is valid
+  // Check whether this image originated from a wxImage and is valid
   if (m_fromWxImage) return m_validWxImage;
 
   bool isValid = false;
@@ -514,7 +514,7 @@ wxPdfImage::ParseJPG(wxInputStream* imageStream)
     if (lastMarker == M_COM && commentCorrection)
     {
       // some software does not count the length bytes of COM section
-      // one company doing so is very much envolved in JPEG... so we accept too
+      // one company doing so is very much involved in JPEG... so we accept too
       // by the way: some of those companies changed their code now...
       commentCorrection = 2;
     }
@@ -1177,7 +1177,7 @@ wxPdfImage::ReadIntLE(wxInputStream* imageStream)
 unsigned int
 wxPdfImage::ReadUIntBE(wxInputStream* imageStream)
 {
-  // Read a unsigned 4-byte integer from file (big endian)
+  // Read an unsigned 4-byte integer from file (big endian)
   unsigned int i32;
   imageStream->Read(&i32, 4);
   return wxUINT32_SWAP_ON_LE(i32);
@@ -1186,7 +1186,7 @@ wxPdfImage::ReadUIntBE(wxInputStream* imageStream)
 unsigned int
 wxPdfImage::ReadUIntLE(wxInputStream* imageStream)
 {
-  // Read a unsigned 4-byte integer from file (little endian)
+  // Read an unsigned 4-byte integer from file (little endian)
   unsigned int i32;
   imageStream->Read(&i32, 4);
   return wxUINT32_SWAP_ON_BE(i32);

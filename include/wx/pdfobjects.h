@@ -58,10 +58,10 @@ public:
   // Get actual object id
   int GetActualId() { return m_actualId; }
 
-  /// Flag this object as created through a indirect reference
+  /// Flag this object as created through an indirect reference
   void SetCreatedIndirect(bool indirect) { m_indirect = indirect; }
 
-  /// Check whether this object was created through a indirect reference
+  /// Check whether this object was created through an indirect reference
   bool IsCreatedIndirect() { return m_indirect; }
 
   /// Check whether this object can be in an object stream

@@ -152,7 +152,7 @@ public:
   */
   void SetCffOffset(size_t cffOffset) { m_cffOffset = cffOffset; }
 
-  /// Set the lenght of the CFF section
+  /// Set the length of the CFF section
   /**
   * \param cffLength the offset of the CFF section
   */

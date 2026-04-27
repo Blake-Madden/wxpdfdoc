@@ -269,7 +269,7 @@ protected:
   /// Set the parent of the layer
   bool SetParent(wxPdfLayer* parent);
 
-  /// Allocate the usage dictonary
+  /// Allocate the usage dictionary
   wxPdfDictionary* AllocateUsage();
 
 private:

@@ -2548,7 +2548,7 @@ wxPdfDocument::Arrow(double x1, double y1, double x2, double y2, double linewidt
 
   SetLineWidth(0.2);
 
-  //Draw a arrow head
+  //Draw an arrow head
   OutAscii(wxPdfUtility::Double2String( x2*m_k,2) + wxString(wxS(" ")) +
            wxPdfUtility::Double2String( y2*m_k,2) + wxString(wxS(" m ")) +
            wxPdfUtility::Double2String( x3*m_k,2) + wxString(wxS(" ")) +

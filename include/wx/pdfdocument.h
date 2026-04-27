@@ -941,9 +941,9 @@ public:
   virtual void RoundedRect(double x, double y, double w, double h,
                            double r, int roundCorner = wxPDF_CORNER_ALL, int style = wxPDF_STYLE_DRAW);
 
-  /// Draws a Bezier curve
+  /// Draws a Bézier curve
   /**
-  * A Bezier curve is tangent to the line between the control points at either end of the curve.
+  * A Bézier curve is tangent to the line between the control points at either end of the curve.
   * \param x0: Abscissa of start point
   * \param y0: Ordinate of start point
   * \param x1: Abscissa of control point 1
@@ -968,7 +968,7 @@ public:
   * \param astart: Start angle
   * \param afinish: Finish angle
   * \param style: Style of rectangle (draw and/or fill)
-  * \param nSeg: Ellipse is made up of nSeg Bezier curves
+  * \param nSeg: Ellipse is made up of nSeg Bézier curves
   * \param doSector: connect end points of elliptic arc with center point
   */
   virtual void Ellipse(double x0, double y0, double rx, double ry = 0,
@@ -983,7 +983,7 @@ public:
   * \param astart: Start angle
   * \param afinish: Finish angle
   * \param style: Style of rectangle (draw and/or fill)
-  * \param nSeg: Circle is made up of nSeg Bezier curves
+  * \param nSeg: Circle is made up of nSeg Bézier curves
   */
   virtual void Circle(double x0, double y0, double r,
                       double astart = 0, double afinish = 360,
@@ -1051,7 +1051,7 @@ public:
                            const wxPdfLineStyle& circleLineStyle = wxPdfLineStyle(),
                            const wxPdfColour& circleFillColour = wxPdfColour());
 
-  /// Draws a Bezier spline through a list of points
+  /// Draws a Bézier spline through a list of points
   /**
   * \param x Array with abscissa values
   * \param y Array with ordinate values
@@ -1059,7 +1059,7 @@ public:
   */
   virtual void BezierSpline(const wxPdfArrayDouble& x, const wxPdfArrayDouble& y, int style);
 
-  /// Draws a closed Bezier spline through a list of points
+  /// Draws a closed Bézier spline through a list of points
   /**
   * \param x Array with abscissa values
   * \param y Array with ordinate values
@@ -1367,7 +1367,7 @@ public:
 
   /// Prints a character string.
   /**
-  * The origin is on the left of the first charcter, on the baseline.
+  * The origin is on the left of the first character, on the baseline.
   * This method allows to place a string precisely on the page, but it is usually easier to use Cell(),
   * MultiCell() or Write() which are the standard methods to print text.
   * \param x Abscissa of the origin
@@ -1618,7 +1618,7 @@ public:
 
   /**
   * Puts an image in the page
-  * The image is given by an wxImage-Object
+  * The image is given by a wxImage-Object
   * \param name Name of the image to be used as an identifier for this image object.
   * \param image wxImage object which will be embedded as PNG
   * \param x Abscissa of the upper-left corner.
@@ -1637,7 +1637,7 @@ public:
 
   /**
   * Puts an image in the page
-  * The image is given by an wxInputStream-Object containing the raw image data.
+  * The image is given by a wxInputStream-Object containing the raw image data.
   * \param name Name of the image to be used as an identifier for this image object.
   * \param stream wxInputStream object containing the raw image data
   * \param mimeType Image format. Possible values are: image/jpeg, image/png, image/gif, image/wmf.
@@ -1851,11 +1851,11 @@ public:
   */
   virtual void LineTo(double x, double y);
 
-  /// Append a cubic Bezier curve to the current (sub)path
+  /// Append a cubic Bézier curve to the current (sub)path
   /**
-  * Append a cubic Bezier curve to the current path. The curve extends
+  * Append a cubic Bézier curve to the current path. The curve extends
   * from the current point to the point (x3, y3), using (x1, y1) and (x2, y2)
-  * as the B�zier control points. The new current point is (x3, y3).
+  * as the Bézier control points. The new current point is (x3, y3).
   * \param x1: Abscissa of control point 1
   * \param y1: Ordinate of control point 1
   * \param x2: Abscissa of control point 2
@@ -2144,7 +2144,7 @@ public:
   virtual int LinearGradient(const wxPdfColour& col1, const wxPdfColour& col2,
                              wxPdfLinearGradientType gradientType = wxPDF_LINEAR_GRADIENT_HORIZONTAL);
 
-  /// Defines a axial gradient shading
+  /// Defines an axial gradient shading
   /**
   * \param col1 first colour (RGB or CMYK).
   * \param col2 second colour (RGB or CMYK).
@@ -2159,7 +2159,7 @@ public:
                             double x2 = 1, double y2 = 0,
                             double intexp = 1);
 
-  /// Defines a axial gradient shading
+  /// Defines an axial gradient shading
   /**
   * \param col1 first colour (RGB or CMYK).
   * \param col2 second colour (RGB or CMYK).
@@ -2410,7 +2410,7 @@ public:
   * \return int The ID of the created template
   * \see EndTemplate(), UseTemplate()
   *
-  * Attention: Calls to BeginTemplate can not be nested!
+  * Attention: Calls to BeginTemplate cannot be nested!
   */
   virtual int BeginTemplate(double x = 0, double y = 0, double width = 0, double height = 0);
 
@@ -2633,7 +2633,7 @@ public:
   /**
   * Attaches a file to the PDF document.
   * \param fileName path to the file to attach
-  * \param attachName the name under which the file will be attached (dfeault: filename)
+  * \param attachName the name under which the file will be attached (default: filename)
   * \param description an optional description
   */
   virtual bool AttachFile(const wxString& fileName,
@@ -2748,7 +2748,7 @@ protected:
   /// End of page contents
   virtual void EndPage();
 
-  /// End dociment
+  /// End document
   virtual void EndDoc();
 
   /// Add header
@@ -2912,7 +2912,7 @@ protected:
   /// Draws a line relative from last draw point
   void OutLineRelative(double dx, double dy);
 
-  /// Draws a B�zier curve from last draw point
+  /// Draws a Bézier curve from last draw point
   void OutCurve(double x1, double y1, double x2, double y2, double x3, double y3);
 
   /// Perform transformation
@@ -3040,7 +3040,7 @@ private:
 
   wxArrayPtrVoid       m_outlines;            ///< array of bookmarks
   int                  m_outlineRoot;         ///< number of root node
-  int                  m_maxOutlineLevel;     ///< max. occuring outline level
+  int                  m_maxOutlineLevel;     ///< max. occurring outline level
 
   wxArrayPtrVoid       m_graphicStates;       ///< array of graphic states
   wxString             m_fontPath;            ///< current default path for font files

@@ -569,7 +569,7 @@ bool
 wxPdfDCImpl::SetTransformMatrix(const wxAffineMatrix2D& matrix)
 {
   wxCHECK_MSG(m_pdfDocument, false, wxS("Invalid PDF DC"));
-  // At the moment concatinating the transformation matrix is not supported
+  // At the moment concatenating the transformation matrix is not supported
   ResetTransformMatrix();
 
   // Do nothing, if the transformation matrix equals the identity matrix

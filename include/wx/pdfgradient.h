@@ -67,10 +67,10 @@ public:
   /**
   * \param colour1 first colour
   * \param colour2 second colour
-  * \param x1 x ccordinate of the start point
-  * \param y1 y ccordinate of the start point
-  * \param x2 x ccordinate of the end point
-  * \param y2 y ccordinate of the end point
+  * \param x1 x coordinate of the start point
+  * \param y1 y coordinate of the start point
+  * \param x2 x coordinate of the end point
+  * \param y2 y coordinate of the end point
   * \param intexp interpolation exponent
   */
   wxPdfAxialGradient(const wxPdfColour& colour1, const wxPdfColour& colour2, double x1, double y1, double x2, double y2, double intexp);
@@ -117,10 +117,10 @@ public:
   /**
   * \param colour1 first colour
   * \param colour2 second colour
-  * \param x1 x ccordinate of the start point
-  * \param y1 y ccordinate of the start point
-  * \param x2 x ccordinate of the end point
-  * \param y2 y ccordinate of the end point
+  * \param x1 x coordinate of the start point
+  * \param y1 y coordinate of the start point
+  * \param x2 x coordinate of the end point
+  * \param y2 y coordinate of the end point
   * \param midpoint coordinate of mid point
   * \param intexp interpolation exponent
   */
@@ -144,11 +144,11 @@ public:
   /**
   * \param colour1 first colour
   * \param colour2 second colour
-  * \param x1 x ccordinate of the start point
-  * \param y1 y ccordinate of the start point
+  * \param x1 x coordinate of the start point
+  * \param y1 y coordinate of the start point
   * \param r1 radius at start point
-  * \param x2 x ccordinate of the end point
-  * \param y2 y ccordinate of the end point
+  * \param x2 x coordinate of the end point
+  * \param y2 y coordinate of the end point
   * \param r2 radius at end point
   * \param intexp interpolation exponent
   */

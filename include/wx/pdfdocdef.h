@@ -390,7 +390,7 @@ Most likely only wxWidgets 2.9.x will be supported since the internals of the ba
 wxGraphicsContext differ considerably between wxWidgets 2.8.x and 2.9.x.
 
 Added features:<br>
-- methods to draw Bezier splines through a list of points;
+- methods to draw Bézier splines through a list of points;
 the drawing sample has been extended to show the new functionality
 - PDF drawing context (wxPdfDC); not yet all methods are implemented
 - support for fonts with VOLT (Visual Ordering and Layout Tables) data
@@ -664,8 +664,8 @@ of a specific method the following alphabetical list shows all available methods
 \li wxPdfDocument::ClosePath - close a clipping path
 \li wxPdfDocument::ComboBox - add a combo box to a form
 \li wxPdfDocument::CoonsPatchGradient - define coons patch mesh gradient shading
-\li wxPdfDocument::Curve - draw a Bezier curve
-\li wxPdfDocument::CurveTo - append a cubic Bezier curve to a clipping path
+\li wxPdfDocument::Curve - draw a Bézier curve
+\li wxPdfDocument::CurveTo - append a cubic Bézier curve to a clipping path
 
 \li wxPdfDocument::Ellipse - draw an ellipse
 \li wxPdfDocument::EndTemplate - end template creation
@@ -898,7 +898,7 @@ For example, for Comic Sans MS Regular:
 
 Two files are created; the one we are interested in is comic.afm.
 
-\remark Starting with wxPdfDocument version 0.8.5 this step may be ommitted for
+\remark Starting with wxPdfDocument version 0.8.5 this step may be omitted for
 TrueType and OpenType fonts.
 
 \section mkfontgen2 Generation of the font definition file
@@ -1048,7 +1048,7 @@ TrueType Collections (.ttc) which contain multiple fonts. By default font with i
 <tr><td valign="top"><tt>-e&nbsp;ENCODING</tt></td><td>the font encoding of the font.
 \note This option is required only for \b Type1 fonts and is ignored for other font types.
 
-The encoding defines the association between a code (from 0 to 255) and an Unicode character.
+The encoding defines the association between a code (from 0 to 255) and a Unicode character.
 The first 128 are fixed and correspond to ASCII; the next 128 are variable. The following
 encodings are supported by \b ShowFont:
 
@@ -1249,9 +1249,9 @@ list item is indented.
 <tr bgcolor="#eeeeee"><td valign="top"><tt>type="1|a|A|i|I|z1|z2|z3|z4"</tt></td><td>Sets the type of the list item enumerator
 <p><tt><b>1</b></tt> displays a decimal number as the list item enumerator</p>
 <p><tt><b>a</b></tt> displays a lowercase alphabetic character as the list item enumerator</p>
-<p><tt><b>A</b></tt> displays a uppercase alphabetic character as the list item enumerator</p>
+<p><tt><b>A</b></tt> displays an uppercase alphabetic character as the list item enumerator</p>
 <p><tt><b>i</b></tt> displays a lowercase roman number as the list item enumerator</p>
-<p><tt><b>I</b></tt> displays a uppercase roman number as the list item enumerator</p>
+<p><tt><b>I</b></tt> displays an uppercase roman number as the list item enumerator</p>
 <p><tt><b>z1|z2|z3|z4</b></tt> displays number symbols of one of the 4 number series in the \b ZapfDingBats font. This option should only be used for lists of at most 10 items.</p>
 </td></tr>
 <tr bgcolor="#ddeeff"><td><tt>start="number"</tt></td><td><i>number</i> represents the enumerator value of the first list item</td></tr>
@@ -1294,7 +1294,7 @@ loading the referenced URL.
 <tr bgcolor="#6699dd"><td colspan="2"><b>Tag</b></td></tr>
 <tr bgcolor="#eeeeee"><td colspan="2"><b>&lt;a&gt;</b></td></tr>
 <tr bgcolor="#6699dd"><td><b>Attribute</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>href="url"</tt></td><td><i>url</i> is an unified resource locator.
+<tr bgcolor="#eeeeee"><td><tt>href="url"</tt></td><td><i>url</i> is a unified resource locator.
 If <i>url</i> starts with <b>#</b> it is interpreted as a reference to an internal link anchor;
 the characters following <b>#</b> are used as the name of the anchor.</td></tr>
 <tr bgcolor="#ddeeff"><td><tt>name="anchor"</tt></td><td><i>anchor</i> is the name of an internal link anchor.</td></tr>
@@ -1392,7 +1392,7 @@ The <b><tt>table</tt></b> tag may have the following attributes:
 <tr bgcolor="#eeeeee"><td colspan="2"><b>&lt;table&gt;</b></td></tr>
 <tr bgcolor="#6699dd"><td><b>Attribute</b></td><td><b>Description</b></td></tr>
 <tr bgcolor="#eeeeee"><td valign="top"><tt>border="number"</tt></td><td>Table cells may have borders on each side.
-This attribute specifies whether cells will have borders on every side or not. This may be overriden for each individual cell.
+This attribute specifies whether cells will have borders on every side or not. This may be overridden for each individual cell.
 The attribute value consists of the combination of up to 4 letters:
 <p>\b 0 - no borders<br>
 <b> &gt; 0</b> - borders on all sides of each cell<br>

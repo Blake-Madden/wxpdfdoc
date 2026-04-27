@@ -369,7 +369,7 @@ wxPdfFontDataTrueType::WriteFontData(wxOutputStream* fontData, wxPdfSortedArrayI
     }
     else
     {
-      // usually this should not happen since file accessability was already checked
+      // usually this should not happen since file accessibility was already checked
       wxLogError(wxString(wxS("wxPdfFontDataTrueType::WriteFontData: ")) +
                  wxString::Format(_("Font file '%s' not found."), fileName.GetFullPath().c_str()));
     }
@@ -602,7 +602,7 @@ wxPdfFontDataTrueTypeUnicode::LoadFontMetrics(wxXmlNode* root)
     else
     {
       m_initialized = false;
-      // usually this should not happen since file accessability was already checked
+      // usually this should not happen since file accessibility was already checked
       wxLogError(wxString(wxS("wxPdfFontDataTrueTypeUnicode::LoadFontMetrics: ")) +
                  wxString::Format(_("CTG file '%s' not found."), fileName.GetFullPath().c_str()));
     }
@@ -939,7 +939,7 @@ wxPdfFontDataTrueTypeUnicode::WriteFontData(wxOutputStream* fontData, wxPdfSorte
       }
       else
       {
-        // usually this should not happen since file accessability was already checked
+        // usually this should not happen since file accessibility was already checked
         wxLogError(wxString(wxS("wxPdfFontDataTrueTypeUnicode::WriteFontData: ")) +
                    wxString::Format(_("Font file '%s' not found."), fileName.GetFullPath().c_str()));
       }
