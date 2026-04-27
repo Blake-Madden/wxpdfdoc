@@ -297,7 +297,7 @@ public:
   */
   void SetInputMode(int inputMode) { m_inputMode = inputMode; }
 
-  // Note text/eci and segs are mutally exclusive
+  // Note text/eci and segs are mutually exclusive
 
   /// Get the input data
   /**

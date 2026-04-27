@@ -224,7 +224,7 @@ public:
 
   /// Check whether the font will be embedded
   /**
-  * \return TRUE if the font will be embedde, FALSE otherwise
+  * \return TRUE if the font will be embedded, FALSE otherwise
   */
   bool IsEmbedded() const;
 

@@ -362,7 +362,7 @@ wxPdfCffDecoder::ReadASubr(wxInputStream* stream, int begin, int end,
   // Clear the stack for the subrs
   EmptyStack();
   m_numHints = 0;
-  // Goto begining of the subr
+  // Goto beginning of the subr
   stream->SeekI(begin);
   while (stream->TellI() < end)
   {
@@ -428,7 +428,7 @@ wxPdfCffDecoder::ReadASubr(wxInputStream* stream, int begin, int end,
     // A call to "stem"
     else if (m_key == wxS("hstem") || m_key == wxS("vstem") || m_key == wxS("hstemhm") || m_key == wxS("vstemhm"))
     {
-      // Increment the NumOfHints by the number couples of of arguments
+      // Increment the NumOfHints by the number couples of arguments
       m_numHints += numArgs / 2;
     }
           // A call to "mask"
@@ -568,7 +568,7 @@ wxPdfCffDecoder::ReadCommand(wxInputStream* stream)
       m_argCount++;
       continue;
     }
-    if (b0 >= 247 && b0 <= 250) // The byte read and the next byte constetute a short int
+    if (b0 >= 247 && b0 <= 250) // The byte read and the next byte constitute a short int
     {
       unsigned char b1 = ReadByte(stream);
       short item = (short) ((b0-247)*256 + b1 + 108);
@@ -597,7 +597,7 @@ wxPdfCffDecoder::ReadCommand(wxInputStream* stream)
     if (b0 <= 31 && b0 != 28) // An operator was found.. Set Key.
     {
       gotKey = true;
-      // 12 is an escape command therefor the next byte is a part
+      // 12 is an escape command therefore the next byte is a part
       // of this command
       if (b0 == 12)
       {

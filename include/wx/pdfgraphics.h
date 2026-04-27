@@ -79,7 +79,7 @@ public:
   */
   int CurrentSegment(double coords[]);
 
-  /// Subdivide cubic bezier curve path
+  /// Subdivide cubic Bézier curve path
   void SubdivideCubic();
 
   /// Check whether path iterator is done

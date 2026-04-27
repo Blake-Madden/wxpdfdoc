@@ -164,7 +164,7 @@ wxPdfFontParserType1::IdentifyFont(const wxString& fontFileName, int fontIndex)
   m_fileName = fontFileName;
   wxFileName fileNameFont(fontFileName);
 
-  // Check for existance of metric file
+  // Check for existence of metric file
   wxFSFile* metricFile = NULL;
   wxFileName fileNameMetric(fontFileName);
   fileNameMetric.SetExt(wxS("afm"));
@@ -1226,7 +1226,7 @@ wxPdfFontParserType1::ReadPFM(wxInputStream& pfmFile)
   }
   fd.SetItalicAngle(italicAngle);
 
-  // The .pfm file does not conatin the font bounding box.
+  // The .pfm file does not contain the font bounding box.
   // The font bounding box is reconstructed by guessing reasonable values.
   int bbox1 = (isMono) ? -20 : -100;
   int bbox2 = -(ext.descender+5);
@@ -1388,7 +1388,7 @@ wxPdfFontParserType1::GetPrivateDict(wxInputStream* stream, int start)
   if (m_isPFB)
   {
     // The private dictionary can be made of several segments
-    // All binary segements are read in and concatenated
+    // All binary segments are read in and concatenated
     unsigned char blocktype;
     int length;
     do

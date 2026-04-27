@@ -47,7 +47,7 @@ class WXDLLIMPEXP_FWD_PDFDOC wxPdfInfo;
 #define TOKEN_NULL             12
 #define TOKEN_OTHER            13
 
-/// Class representing a tokenizer for parsing PDF documenst.
+/// Class representing a tokenizer for parsing PDF documents.
 class WXDLLIMPEXP_PDFDOC wxPdfTokenizer
 {
 public:
@@ -126,7 +126,7 @@ private:
   wxString       m_stringValue; ///< Value of last token
   int            m_reference;   ///< Reference number of object
   int            m_generation;  ///< Generation number of object
-  bool           m_hexString;   ///< Flag for hexadeciaml strings
+  bool           m_hexString;   ///< Flag for hexadecimal strings
 
 };
 

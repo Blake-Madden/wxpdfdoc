@@ -1372,7 +1372,7 @@ wxPdfFontSubsetCff::FindLocalAndGlobalSubrsUsed()
         wxPdfSortedArrayInt hSubrsUsed(CompareInts);
         wxArrayInt lSubrsUsed;
         //Scans the Charsting data storing the used Local and Global subroutines
-        // by the glyphs. Scans the Subrs recursivley.
+        // by the glyphs. Scans the Subrs recursively.
         FindSubrsUsed(j, *((wxPdfCffIndexArray*) m_fdLocalSubrIndex[j]), hSubrsUsed, lSubrsUsed);
         // Builds the New Local Subrs index
         SubsetSubrs(*((wxPdfCffIndexArray*) m_fdLocalSubrIndex[j]), hSubrsUsed);
@@ -1383,11 +1383,11 @@ wxPdfFontSubsetCff::FindLocalAndGlobalSubrsUsed()
   else
   {
     //Scans the Charsting data storing the used Local and Global subroutines
-    // by the glyphs. Scans the Subrs recursivley.
+    // by the glyphs. Scans the Subrs recursively.
     FindSubrsUsed(-1, *m_localSubrIndex, *m_hLocalSubrsUsed, m_lLocalSubrsUsed);
   }
   // Subset the Global Subroutines
-  // Scan the Global Subr Hashmap recursivly on the Gsubrs
+  // Scan the Global Subr Hashmap recursively on the Gsubrs
   FindGlobalSubrsUsed();
   SubsetSubrs(*m_globalSubrIndex, *m_hGlobalSubrsUsed);
   if (!m_isCid)
