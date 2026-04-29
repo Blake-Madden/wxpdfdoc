@@ -47,32 +47,54 @@ enum wxPdfOcgPolicy
   wxPDF_OCG_POLICY_ALLOFF
 };
 
-/// Base class for optional content. (For internal use only)
+/// Base class for Optional Content Groups (OCG). (For internal use only)
+/**
+* Optional Content Groups (OCG) allow controlling the visibility of content in a PDF document,
+* enabling users or applications to toggle the display of specific layers or elements.
+*/
 class WXDLLIMPEXP_PDFDOC wxPdfOcg
 {
 public:
-  /// Constructor
+  /// Default constructor
   wxPdfOcg();
 
   /// Destructor
   virtual ~wxPdfOcg();
 
   /// Set OCG index
+  /**
+  * \param index OCG index
+  */
   void SetIndex(int index) { m_index = index; }
 
   /// Get OCG index
+  /**
+  * \return The OCG index
+  */
   int  GetIndex() const { return m_index; }
 
   /// Set object index
+  /**
+  * \param n object index
+  */
   void SetObjIndex(int n) { m_n = n; }
 
   /// Get object index
+  /**
+  * \return The object index
+  */
   int  GetObjIndex() const { return m_n; }
 
   /// Check whether OCG is initialized
+  /**
+  * \return TRUE if initialized, FALSE otherwise
+  */
   bool IsOk() const;
 
-  /// Get
+  /// Get OCG type
+  /**
+  * \return The OCG type
+  */
   wxPdfOcgType GetType() const { return m_type; }
 
 protected:
@@ -171,6 +193,10 @@ public:
   */
   wxPdfLayer* GetParent() const { return m_parent; }
 
+  /// Check whether the layer has child layers
+  /**
+  * \return TRUE if the layer has children, FALSE otherwise
+  */
   bool HasChildren() const { return !m_children.IsEmpty(); }
 
   /// Get the list of child layers
@@ -301,6 +327,9 @@ public:
   bool AddMember(wxPdfLayer* layer);
 
   /// Get a list of the layers
+  /**
+  * \return The list of layers belonging to this membership
+  */
   wxPdfArrayLayer GetMembers() const;
 
   /// Set visibility policy
@@ -314,6 +343,9 @@ public:
   void SetVisibilityPolicy(wxPdfOcgPolicy policy);
 
   /// Get the visibility policy
+  /**
+  * \return The current visibility policy
+  */
   wxPdfOcgPolicy GetVisibilityPolicy() const;
 
 protected:
@@ -352,6 +384,9 @@ public:
   bool Add(wxPdfLayer* layer);
 
   /// Get list of group members
+  /**
+  * \return The list of layers belonging to this group
+  */
   wxPdfArrayLayer GetGroup() const;
 
 private:

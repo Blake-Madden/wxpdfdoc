@@ -166,6 +166,13 @@ public:
                 const wxString& unit = wxString(wxS("mm")),
                 wxPaperSize format = wxPAPER_A4);
 
+  /// Constructor
+  /**
+  * \param orientation Defines the default page orientation.
+  * \param pageWidth Defines the page width in user units.
+  * \param pageHeight Defines the page height in user units.
+  * \param unit Defines the user units (pt: points, mm: millimeters, cm: centimeters, in: inches).
+  */
   wxPdfDocument(int orientation, double pageWidth, double pageHeight,
                 const wxString& unit = wxString(wxS("mm")));
 
@@ -493,8 +500,19 @@ public:
   */
   virtual void AddPage(int orientation = -1, bool useDefaultPageSize = true);
 
+  /// Adds a new page with the specified orientation and format.
+  /**
+  * \param orientation Page orientation (@c wxPORTRAIT, @c wxLANDSCAPE).
+  * \param format Paper size format.
+  */
   virtual void AddPage(int orientation, wxPaperSize format);
 
+  /// Adds a new page with the specified orientation and dimensions.
+  /**
+  * \param orientation Page orientation (@c wxPORTRAIT, @c wxLANDSCAPE).
+  * \param pageWidth Page width in user units.
+  * \param pageHeight Page height in user units.
+  */
   virtual void AddPage(int orientation, double pageWidth, double pageHeight);
 
   /// This method is used to render the page header.
@@ -830,6 +848,7 @@ public:
 
   /// Returns the text render mode
   /**
+  * \return The current text render mode
   */
   virtual wxPdfTextRenderMode GetTextRenderMode() const;
 
@@ -1712,11 +1731,13 @@ public:
 
   /// Get x coordinate of bottom right corner of last inserted image
   /**
+  * \return The x coordinate in user units
   */
   virtual double GetLastImageBottomRightX() { return m_img_rb_x; }
 
   /// Get y coordinate of bottom right corner of last inserted image
   /**
+  * \return The y coordinate in user units
   */
   virtual double GetLastImageBottomRightY() { return m_img_rb_y; }
 
@@ -2109,6 +2130,16 @@ public:
   */
   virtual bool Skew(double xAngle, double yAngle, double x, double y);
 
+  /// Performs a transformation
+  /**
+  * Applies a transformation matrix to the current coordinate system.
+  * \param a element 1,1 of the matrix
+  * \param b element 1,2 of the matrix
+  * \param c element 2,1 of the matrix
+  * \param d element 2,2 of the matrix
+  * \param tx horizontal translation
+  * \param ty vertical translation
+  */
   virtual void Transform( double a, double b, double c, double d, double tx, double ty );
 
   /// Leaves a transformation environment
@@ -2672,7 +2703,10 @@ public:
   bool GetMessageTranslateMode() { return m_translate; }
 
 protected:
-  /// Initialize
+  /// Initialize the document
+  /**
+  * \param orientation Initial page orientation
+  */
   virtual void Initialize(int orientation);
 
   /// Save graphic state
@@ -2685,18 +2719,44 @@ protected:
   virtual void ClearGraphicState();
 
   /// Select font
+  /**
+  * \param family Font family
+  * \param style Font style string
+  * \param size Font size
+  * \param setFont Flag whether to set the font in PDF output
+  * \return TRUE if font was selected, FALSE otherwise
+  */
   virtual bool SelectFont(const wxString& family,
                           const wxString& style = wxEmptyString,
                           double size = 0, bool setFont = true);
 
   /// Select font
+  /**
+  * \param family Font family
+  * \param style Font style flags
+  * \param size Font size
+  * \param setFont Flag whether to set the font in PDF output
+  * \return TRUE if font was selected, FALSE otherwise
+  */
   virtual bool SelectFont(const wxString& family, int style,
                           double size = 0, bool setFont = true);
 
   /// Select font based on wxFont object
+  /**
+  * \param font wxFont object
+  * \param setFont Flag whether to set the font in PDF output
+  * \return TRUE if font was selected, FALSE otherwise
+  */
   virtual bool SelectFont(const wxFont& font, bool setFont = true);
 
-  /// Select font based on wxFont object
+  /// Select font based on wxPdfFont object
+  /**
+  * \param font wxPdfFont object
+  * \param style Font style flags
+  * \param size Font size
+  * \param setFont Flag whether to set the font in PDF output
+  * \return TRUE if font was selected, FALSE otherwise
+  */
   virtual bool SelectFont(const wxPdfFont& font, int style, double size = 0, bool setFont = true);
 
   /// Force selecting the current font
@@ -2947,14 +3007,34 @@ protected:
   void WriteXmlTable(wxPdfCellContext& context);
 
   /// Set internal scale factor
+  /**
+  * \param unit Unit string ("pt", "mm", "cm", "in")
+  */
   void SetScaleFactor(const wxString& unit);
 
+  /// Calculate page size for a given paper format
+  /**
+  * \param format Paper size format
+  * \return Page size in user units
+  */
   wxSize CalculatePageSize(wxPaperSize format);
 
+  /// Calculate page size for given dimensions
+  /**
+  * \param pageWidth Page width
+  * \param pageHeight Page height
+  * \return Page size in user units
+  */
   wxSize CalculatePageSize(double pageWidth, double pageHeight);
 
+  /// Adds a new page with specified orientation and size
+  /**
+  * \param orientation Page orientation (@c wxPORTRAIT, @c wxLANDSCAPE)
+  * \param pageSize Page size in user units
+  */
   virtual void AddPage(int orientation, wxSize pageSize);
 
+  /// Loads the ZapfDingbats core font
   void LoadZapfDingBats();
 
   /**

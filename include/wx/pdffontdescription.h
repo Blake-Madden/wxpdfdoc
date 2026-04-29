@@ -56,6 +56,9 @@ public:
                        int os2usWinAscent = 0, int os2usWinDescent = 0);
 
   /// Copy constructor
+  /**
+  * \param desc The font description to copy
+  */
   wxPdfFontDescription(const wxPdfFontDescription& desc);
 
   /// Default destructor
@@ -196,6 +199,14 @@ public:
   /// Set OpenType Font Metrics
   /**
   * Set font metrics from the OpenType tables hhea and OS/2
+  * \param hheaAscender hhea table ascender
+  * \param hheaDescender hhea table descender
+  * \param hheaLineGap hhea table line gap
+  * \param os2sTypoAscender OS/2 table typo ascender
+  * \param os2sTypoDescender OS/2 table typo descender
+  * \param os2sTypoLineGap OS/2 table typo line gap
+  * \param os2usWinAscent OS/2 table Windows ascent
+  * \param os2usWinDescent OS/2 table Windows descent
   */
   void SetOpenTypeMetrics(int hheaAscender, int hheaDescender, int hheaLineGap,
                           int os2sTypoAscender, int os2sTypoDescender, int os2sTypoLineGap,
@@ -203,7 +214,15 @@ public:
 
   /// Get OpenType Font Metrics
   /**
-  * Get stored font metrics from the OpneType tables hhea and OS/2
+  * Get stored font metrics from the OpenType tables hhea and OS/2
+  * \param[out] hheaAscender hhea table ascender
+  * \param[out] hheaDescender hhea table descender
+  * \param[out] hheaLineGap hhea table line gap
+  * \param[out] os2sTypoAscender OS/2 table typo ascender
+  * \param[out] os2sTypoDescender OS/2 table typo descender
+  * \param[out] os2sTypoLineGap OS/2 table typo line gap
+  * \param[out] os2usWinAscent OS/2 table Windows ascent
+  * \param[out] os2usWinDescent OS/2 table Windows descent
   */
   void GetOpenTypeMetrics(int* hheaAscender, int* hheaDescender, int* hheaLineGap,
                           int* os2sTypoAscender, int* os2sTypoDescender, int* os2sTypoLineGap,

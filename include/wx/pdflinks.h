@@ -58,9 +58,15 @@ public:
   void   SetLink(int page, double ypos) { m_page = page; m_ypos = ypos; }
 
   /// Get the page this link refers to
+  /**
+  * \return The page number
+  */
   int    GetPage() { return m_page; }
 
   /// Get the page position this link refers to
+  /**
+  * \return The Y position on the page
+  */
   double GetPosition() { return m_ypos; }
 
 private:
@@ -83,15 +89,27 @@ public:
   virtual ~wxPdfPageLink();
 
   /// Get the X offset
+  /**
+  * \return The X offset
+  */
   double GetX() { return m_x; }
 
   /// Get the Y offset
+  /**
+  * \return The Y offset
+  */
   double GetY() { return m_y; }
 
   /// Get the width
+  /**
+  * \return The width
+  */
   double GetWidth() { return m_w; }
 
   /// Get the height
+  /**
+  * \return The height
+  */
   double GetHeight() { return m_h; }
 
 private:

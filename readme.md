@@ -55,8 +55,8 @@ to allow running AppVeyor CI without any modifications.
 
 This modification triggers the use of specific library directories for
 different compiler versions (as it is used by the pre-built wxWidgets
-libraries). This adds the toolkit version (i.e. 141 for VS 2015,
-142 for VS 2019, 143 for VS 2022, ) to the library path name.
+libraries). This adds the toolkit version (i.e., 141 for VS 2015,
+142 for VS 2019, 143 for VS 2022) to the library path name.
 
 For wxWidgets releases prior to version 3.1.3 this mode is not yet supported
 for VS 2019; for wxWidgets version 3.0.4 and below this affects also VS 2017.
@@ -165,7 +165,7 @@ of the [Centre for Development of Advanced Computing, Mumbai](http://cdac.in/),
 for clearing license issues of the Raghu font series.
 
 Kudos to Mark Dootson for contributing major enhancements of wxPdfDC and
-it's integration into the wxWidgets printing framework.
+its integration into the wxWidgets printing framework.
 
 Kudos to Dieter Schmeer for contributing several enhancements for the XML markup handling.
 

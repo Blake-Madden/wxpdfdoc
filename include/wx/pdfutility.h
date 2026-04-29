@@ -23,6 +23,10 @@ class WXDLLIMPEXP_PDFDOC wxPdfUtility
 {
 public:
   /// Create a unique ID
+  /**
+  * \param prefix Optional prefix for the ID
+  * \return A unique ID string
+  */
   static wxString GetUniqueId(const wxString& prefix = wxEmptyString);
 
   /// Formats a floating point number with a fixed precision

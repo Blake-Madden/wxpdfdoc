@@ -42,78 +42,153 @@ public:
   virtual ~wxPdfImage();
 
   /// Set image index
+  /**
+  * \param index Image index
+  */
   void SetIndex(int index) { m_index = index; }
 
   /// Get image index
+  /**
+  * \return Image index
+  */
   int  GetIndex() { return m_index; }
 
   /// Set object index
+  /**
+  * \param n Object index
+  */
   void SetObjIndex(int n) { m_n = n; }
 
   /// Get object index
+  /**
+  * \return Object index
+  */
   int  GetObjIndex() { return m_n; }
 
   /// Set mask flag
+  /**
+  * \param maskImage ID of associated image mask
+  */
   void SetMaskImage(int maskImage) { m_maskImage = maskImage; }
 
   /// Check mask flag
+  /**
+  * \return ID of associated image mask
+  */
   int GetMaskImage() { return m_maskImage; }
 
   /// Set image type
+  /**
+  * \param type Image type string
+  */
   void SetType(const wxString& type) { m_type = type; }
 
   /// Get image type
+  /**
+  * \return Image type string
+  */
   wxString GetType() { return m_type; }
 
   /// Check whether image has to be handled as a form object
+  /**
+  * \return TRUE if image is a form object, FALSE otherwise
+  */
   bool IsFormObject() { return m_isFormObj; }
 
   /// Set image file name
+  /**
+  * \param name Image name
+  */
   void SetName(const wxString& name) { m_name = name; }
 
   /// Get image file name
+  /**
+  * \return Image name
+  */
   wxString GetName() { return m_name; }
 
   /// Get image width in pixels
+  /**
+  * \return Image width
+  */
   int GetWidth() { return m_width; }
 
   /// Get image height in pixels
+  /**
+  * \return Image height
+  */
   int GetHeight() { return m_height; }
 
   /// Get image offset in X direction
+  /**
+  * \return X offset
+  */
   int GetX() { return m_x; }
 
   /// Get image offset in Y direction
+  /**
+  * \return Y offset
+  */
   int GetY() { return m_y; }
 
   /// Get colour space
+  /**
+  * \return Colour space string
+  */
   wxString GetColourSpace() { return m_cs; }
 
   /// Get bits per component
+  /**
+  * \return Bits per component
+  */
   int GetBitsPerComponent() { return m_bpc; }
 
   /// Get compression filter specification
+  /**
+  * \return Compression filter string
+  */
   wxString GetF() { return m_f; }
 
   /// Get additional PDF parameter
+  /**
+  * \return Additional parameters string
+  */
   wxString GetParms() { return m_parms; }
 
   /// Get palette size
+  /**
+  * \return Palette size
+  */
   unsigned int GetPaletteSize() { return m_palSize; }
 
   /// Get palette data
+  /**
+  * \return Pointer to palette data
+  */
   char* GetPalette() { return m_pal; }
 
   /// Get transparency size
+  /**
+  * \return Transparency size
+  */
   unsigned int GetTransparencySize() { return m_trnsSize; }
 
   /// Get transparency data
+  /**
+  * \return Pointer to transparency data
+  */
   char* GetTransparency() { return m_trns; }
 
   /// Get image data size
+  /**
+  * \return Data size
+  */
   unsigned int GetDataSize() { return m_dataSize; }
 
   /// Get image data
+  /**
+  * \return Pointer to image data
+  */
   char* GetData() { return m_data; }
 
   /// Parse image file

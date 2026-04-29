@@ -37,21 +37,60 @@ enum wxPdfMapModeStyle
 class WXDLLIMPEXP_PDFDOC wxPdfDC : public wxDC
 {
 public:
+  /// Default constructor
   wxPdfDC();
 
-  // Recommended constructor
+  /// Constructor initializing the DC with print data
+  /**
+  * \param printData Printer configuration data
+  */
   wxPdfDC(const wxPrintData& printData);
 
+  /// Constructor for creating a template in an existing PDF document
+  /**
+  * \param pdfDocument Associated PDF document
+  * \param templateWidth Width of the template in user units
+  * \param templateHeight Height of the template in user units
+  */
   wxPdfDC(wxPdfDocument* pdfDocument, double templateWidth, double templateHeight);
 
+  /// Returns the associated PDF document
+  /**
+  * \return Pointer to the PDF document
+  */
   wxPdfDocument* GetPdfDocument();
 
+  /// Sets the resolution for the DC
+  /**
+  * \param ppi Resolution in pixels per inch
+  */
   void SetResolution(int ppi);
+
+  /// Returns the current resolution
+  /**
+  * \return Resolution in pixels per inch
+  */
   int GetResolution() const;
 
+  /// Sets the image type and quality for bitmap output
+  /**
+  * \param bitmapType The type of the bitmap (e.g., wxBITMAP_TYPE_JPEG)
+  * \param quality Compression quality from 0 to 100
+  */
   void SetImageType(wxBitmapType bitmapType, int quality = 75);
 
+  /// Sets the map mode style
+  /**
+  * Map mode style determines how logical coordinates and font sizes are scaled to the PDF page,
+  * allowing emulation of platform-specific behaviors or native PDF API scaling.
+  * \param style The map mode style to apply
+  */
   void SetMapModeStyle(wxPdfMapModeStyle style);
+
+  /// Returns the current map mode style
+  /**
+  * \return The current map mode style
+  */
   wxPdfMapModeStyle GetMapModeStyle() const;
 
 private:
@@ -67,21 +106,78 @@ private:
 class WXDLLIMPEXP_PDFDOC wxPdfDCImpl: public wxDCImpl
 {
 public:
+  /// Constructor initializing with owner
+  /**
+  * \param owner Pointer to the owner wxPdfDC
+  */
   wxPdfDCImpl(wxPdfDC *owner);
+
+  /// Constructor initializing with owner and print data
+  /**
+  * \param owner Pointer to the owner wxPdfDC
+  * \param data Printer configuration data
+  */
   wxPdfDCImpl(wxPdfDC* owner, const wxPrintData& data);
+
+  /// Constructor for creating a template
+  /**
+  * \param owner Pointer to the owner wxPdfDC
+  * \param pdfDocument Associated PDF document
+  * \param templateWidth Width of the template in user units
+  * \param templateHeight Height of the template in user units
+  */
   wxPdfDCImpl(wxPdfDC* owner, wxPdfDocument* pdfDocument, double templateWidth, double templateHeight);
+
+  /// Constructor initializing with a file
+  /**
+  * \param owner Pointer to the owner wxPdfDC
+  * \param file Output file name
+  * \param w Initial page width
+  * \param h Initial page height
+  */
   wxPdfDCImpl(wxPdfDC* owner, const wxString& file, int w = 300, int h = 200);
+
+  /// Destructor
   virtual ~wxPdfDCImpl();
 
+  /// Initializes the implementation
   void Init();
 
+  /// Returns the associated PDF document
+  /**
+  * \return Pointer to the PDF document
+  */
   wxPdfDocument* GetPdfDocument();
+
+  /// Sets the print data
+  /**
+  * \param data Printer configuration data
+  */
   void SetPrintData(const wxPrintData& data);
+
+  /// Returns the print data
+  /**
+  * \return Reference to the print data
+  */
   wxPrintData& GetPrintData() { return m_printData; }
 
+  /// Sets the resolution
+  /**
+  * \param ppi Resolution in pixels per inch
+  */
   void SetResolution(int ppi);
+
+  /// Returns the resolution
+  /**
+  * \return Resolution in pixels per inch
+  */
   virtual int GetResolution() const wxOVERRIDE;
 
+  /// Sets the image type and quality
+  /**
+  * \param bitmapType The type of the bitmap
+  * \param quality Compression quality from 0 to 100
+  */
   void SetImageType(wxBitmapType bitmapType, int quality = 75);
 
   // implement base class pure virtuals

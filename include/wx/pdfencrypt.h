@@ -70,30 +70,59 @@ public:
                     const wxString& ueValue, const wxString& oeValue, const wxString& permsValue,
                     int pValue, int lengthValue, int rValue, int vValue);
 
+  /// Check whether the given password is valid
+  /**
+  * \param password The password to check
+  * \return TRUE if the password is valid, FALSE otherwise
+  */
   bool PasswordIsValid(const wxString& password) const;
 
   /// Get the U object value (user)
+  /**
+  * \return The user verification value
+  */
   const std::string& GetUValue() const { return m_uValue; }
 
   /// Get the UE object value (user)
+  /**
+  * \return The user encryption key verification value
+  */
   const std::string& GetUEValue() const { return m_ue; }
 
   /// Get the O object value (owner)
+  /**
+  * \return The owner verification value
+  */
   const std::string& GetOValue() const { return m_oValue; }
 
   /// Get the OE object value (owner)
+  /**
+  * \return The owner encryption key verification value
+  */
   const std::string& GetOEValue() const { return m_oe; }
 
   /// Get the P object value (protection)
+  /**
+  * \return The protection flags
+  */
   int GetPValue() const { return m_pValue; }
 
   /// Get the Perms object value (protection)
+  /**
+  * \return The permissions verification value
+  */
   const std::string& GetPermsValue() const { return m_permsValue; }
 
   /// Get the revision number of the encryption method
+  /**
+  * \return The encryption revision
+  */
   int GetRevision() const { return m_rValue; }
 
   /// Get the key length of the encryption key in bits
+  /**
+  * \return The key length in bits
+  */
   unsigned int GetKeyLength() const { return m_keyLength*8; }
 
   /// Encrypt a wxString

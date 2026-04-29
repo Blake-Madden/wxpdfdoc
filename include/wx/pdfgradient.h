@@ -44,9 +44,15 @@ public:
   virtual ~wxPdfGradient();
 
   /// Set gradient object index
+  /**
+  * \param n Object index
+  */
   void SetObjIndex(int n) { m_n = n; }
 
   /// Get gradient object index
+  /**
+  * \return The object index
+  */
   int  GetObjIndex() { return m_n; }
 
   /// Get the gradient type
@@ -79,24 +85,45 @@ public:
   virtual ~wxPdfAxialGradient();
 
   /// Get the gradient colour 1
+  /**
+  * \return The first colour
+  */
   const wxPdfColour& GetColour1() const { return m_colour1; };
 
   /// Get the gradient colour 2
+  /**
+  * \return The second colour
+  */
   const wxPdfColour& GetColour2() const { return m_colour2; };
 
   /// Get x coordinate of start point
+  /**
+  * \return The X coordinate of the start point
+  */
   double GetX1() const { return m_x1; }
 
   /// Get y coordinate of start point
+  /**
+  * \return The Y coordinate of the start point
+  */
   double GetY1() const { return m_y1; }
 
   /// Get x coordinate of end point
+  /**
+  * \return The X coordinate of the end point
+  */
   double GetX2() const { return m_x2; }
 
   /// Get y coordinate of end point
+  /**
+  * \return The Y coordinate of the end point
+  */
   double GetY2() const { return m_y2; }
 
   /// Get the interpolation exponent
+  /**
+  * \return The interpolation exponent
+  */
   double GetIntExp() const { return m_intexp; }
 
 private:
@@ -130,6 +157,9 @@ public:
   virtual ~wxPdfMidAxialGradient();
 
   /// Get the coordinate of the mid point
+  /**
+  * \return The coordinate of the mid point
+  */
   double GetMidPoint() const { return m_midpoint; }
 
 private:
@@ -158,9 +188,15 @@ public:
   virtual ~wxPdfRadialGradient();
 
   /// Get radius at start point
+  /**
+  * \return The radius at the start point
+  */
   double GetR1() const { return m_r1; }
 
   /// Get radius at end point
+  /**
+  * \return The radius at the end point
+  */
   double GetR2() const { return m_r2; }
 
 private:
@@ -174,26 +210,38 @@ class WXDLLIMPEXP_PDFDOC wxPdfCoonsPatch
 public:
   /// Constructor
   /**
-  * \param edgeFlag
-  * \param colours
-  * \param x
-  * \param y
+  * \param edgeFlag The edge flag
+  * \param colours The array of 4 colours
+  * \param x The array of 12 X coordinates
+  * \param y The array of 12 Y coordinates
   */
   wxPdfCoonsPatch(int edgeFlag, wxPdfColour colours[], double x[], double y[]);
 
   /// Destructor
   virtual ~wxPdfCoonsPatch();
 
-  /// Get the edga flag
+  /// Get the edge flag
+  /**
+  * \return The edge flag
+  */
   int GetEdgeFlag() { return m_edgeFlag; }
 
   /// Get the colour array
+  /**
+  * \return The array of colours
+  */
   wxPdfColour* GetColours() { return m_colours; }
 
   /// Get the array of x coordinates
+  /**
+  * \return The array of X coordinates
+  */
   double* GetX() { return m_x; }
 
   /// Get the array of y coordinates
+  /**
+  * \return The array of Y coordinates
+  */
   double* GetY() { return m_y; }
 
 private:
@@ -208,15 +256,26 @@ class WXDLLIMPEXP_PDFDOC wxPdfCoonsPatchGradient : public wxPdfGradient
 {
 public:
   /// Constructor
+  /**
+  * \param mesh The coons patch mesh
+  * \param minCoord The minimum coordinate value
+  * \param maxCoord The maximum coordinate value
+  */
   wxPdfCoonsPatchGradient(const wxPdfCoonsPatchMesh& mesh, double minCoord, double maxCoord);
 
   /// Destructor
   virtual ~wxPdfCoonsPatchGradient();
 
   /// Get the colour type
+  /**
+  * \return The colour type
+  */
   wxPdfColourType GetColourType() { return m_colourType; }
 
   /// Get the buffer holding the gradient data
+  /**
+  * \return The memory output stream containing the gradient data
+  */
   wxMemoryOutputStream* GetBuffer() { return &m_buffer; }
 
 private:

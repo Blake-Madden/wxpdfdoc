@@ -35,9 +35,16 @@ public :
   virtual ~wxPdfFont() ;
 
   /// Copy constructor
+  /**
+  * \param font Font to copy
+  */
   wxPdfFont(const wxPdfFont& font);
 
-  /// Assignment
+  /// Assignment operator
+  /**
+  * \param font Font to assign
+  * \return Reference to this font
+  */
   wxPdfFont& operator=(const wxPdfFont& font);
 
   /// Check whether font is valid
@@ -161,7 +168,7 @@ public :
   */
   bool GetEncoding(wxPdfEncoding& encoding);
 
-  /// Check whether the font oan show all characters of a given string
+  /// Check whether the font can show all characters of a given string
   /**
   * \param s the string to be checked
   * \return TRUE if the font can show all characters of the string, FALSE otherwise
@@ -196,6 +203,10 @@ public :
 
 private:
   /// Constructor creating a reference to the real font data
+  /**
+  * \param fontData Pointer to font data
+  * \param fontStyle Font style flags
+  */
   wxPdfFont(wxPdfFontData* fontData, int fontStyle = wxPDF_FONTSTYLE_REGULAR);
 
   bool                 m_embed;     ///< Flag whether the font should be embedded
