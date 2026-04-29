@@ -338,7 +338,7 @@ wxPdfDCImpl::SetFont(const wxFont& font)
     return;
   }
   int styles = wxPDF_FONTSTYLE_REGULAR;
-  if (font.GetWeight() == wxFONTWEIGHT_BOLD)
+  if (font.GetWeight() >= wxFONTWEIGHT_BOLD)
   {
     styles |= wxPDF_FONTSTYLE_BOLD;
   }

@@ -182,7 +182,7 @@ wxPdfDocument::SelectFont(const wxFont& font, bool setFont)
 {
 #if wxUSE_UNICODE
   int styles = wxPDF_FONTSTYLE_REGULAR;
-  if (font.GetWeight() == wxFONTWEIGHT_BOLD)
+  if (font.GetWeight() >= wxFONTWEIGHT_BOLD)
   {
     styles |= wxPDF_FONTSTYLE_BOLD;
   }
@@ -233,7 +233,7 @@ wxPdfDocument::SelectFont(const wxFont& font, bool setFont)
   }
 
   wxString style = wxEmptyString;
-  if (font.GetWeight() == wxFONTWEIGHT_BOLD)
+  if (font.GetWeight() >= wxFONTWEIGHT_BOLD)
   {
     style += wxString(wxS("B"));
   }
