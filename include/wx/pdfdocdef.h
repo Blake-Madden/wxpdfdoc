@@ -5,7 +5,7 @@
 ** Created:     2005-08-04
 ** Copyright:   (c) 2005-2025 Ulrich Telle
 ** Licence:     wxWindows licence
-** SPDX-License-Identifier: LGPL-3.0+ WITH WxWindows-exception-3.1
+** SPDX-License-Identifier: LGPL-3.0+ WITH wxWindows-exception-3.1
 */
 
 /// \file pdfdocdef.h Compile time switches for the \b wxPdfDocument component
@@ -1054,25 +1054,25 @@ encodings are supported by \b ShowFont:
 
 <table border="0">
 <tr bgcolor="#6699dd"><td><b>Encoding</b></td><td><b>Description</b></td><td>&nbsp;</td><td><b>Encoding</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>standard</tt></td><td>Adobe standard Latin encoding</td><td>&nbsp;</td><td><tt>iso-8859-1</tt></td><td>Western European / Latin-1</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>winansi</tt></td><td>Windows ANSI aka Windows Code Page 1252</td><td>&nbsp;</td><td><tt>iso-8859-2</tt></td><td>Central European / Latin-2</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>macroman</tt></td><td>Mac OS encoding for Latin</td><td>&nbsp;</td><td><tt>iso-8859-3</tt></td><td>South European / Latin-3</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>symbol</tt></td><td>Symbol set encoding</td><td>&nbsp;</td><td><tt>iso-8859-4</tt></td><td>Baltic</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>zapfdingbats</tt></td><td>ZapfDingbats encoding</td><td>&nbsp;</td><td><tt>iso-8859-5</tt></td><td>Cyrillic</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-1250</tt></td><td>Central and East European Latin</td><td>&nbsp;</td><td><tt>iso-8859-6</tt></td><td>Arabic</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-1251</tt></td><td>Cyrillic</td><td>&nbsp;</td><td><tt>iso-8859-7</tt></td><td>Greek</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-1252</tt></td><td>Western European Latin</td><td>&nbsp;</td><td><tt>iso-8859-8</tt></td><td>Hebrew</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-1253</tt></td><td>Greek</td><td>&nbsp;</td><td><tt>iso-8859-9</tt></td><td>Turkish</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-1254</tt></td><td>Turkish</td><td>&nbsp;</td><td><tt>iso-8859-10</tt></td><td>Nordic</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-1255</tt></td><td>Hebrew</td><td>&nbsp;</td><td><tt>iso-8859-11</tt></td><td>Thai</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-1256</tt></td><td>Arabic</td><td>&nbsp;</td><td><tt>iso-8859-13</tt></td><td>Baltic Rim</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-1257</tt></td><td>Baltic</td><td>&nbsp;</td><td><tt>iso-8859-14</tt></td><td>Celtic</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-1258</tt></td><td>Vietnamese</td><td>&nbsp;</td><td><tt>iso-8859-15</tt></td><td>Western European / Latin-9</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-874</tt></td><td>Thai</td><td>&nbsp;</td><td><tt>iso-8859-16</tt></td><td>South Eastern European / Latin-10</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-932</tt></td><td>Japanese</td><td>&nbsp;</td><td><tt>koi8-r</tt></td><td>Russian</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-936</tt></td><td>Simplified Chinese</td><td>&nbsp;</td><td><tt>koi8-u</tt></td><td>Ukrainian</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>cp-949</tt></td><td>Korean</td><td>&nbsp;</td><td></td><td></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>cp-950</tt></td><td>Traditional Chinese</td><td>&nbsp;</td><td></td><td></td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>standard</tt></td><td>Adobe standard Latin encoding</td><td>&nbsp;</td><td><tt>iso-8859-1</tt></td><td>Western European / Latin-1</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>winansi</tt></td><td>Windows ANSI aka Windows Code Page 1252</td><td>&nbsp;</td><td><tt>iso-8859-2</tt></td><td>Central European / Latin-2</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>macroman</tt></td><td>Mac OS encoding for Latin</td><td>&nbsp;</td><td><tt>iso-8859-3</tt></td><td>South European / Latin-3</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>symbol</tt></td><td>Symbol set encoding</td><td>&nbsp;</td><td><tt>iso-8859-4</tt></td><td>Baltic</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>zapfdingbats</tt></td><td>ZapfDingbats encoding</td><td>&nbsp;</td><td><tt>iso-8859-5</tt></td><td>Cyrillic</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-1250</tt></td><td>Central and East European Latin</td><td>&nbsp;</td><td><tt>iso-8859-6</tt></td><td>Arabic</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-1251</tt></td><td>Cyrillic</td><td>&nbsp;</td><td><tt>iso-8859-7</tt></td><td>Greek</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-1252</tt></td><td>Western European Latin</td><td>&nbsp;</td><td><tt>iso-8859-8</tt></td><td>Hebrew</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-1253</tt></td><td>Greek</td><td>&nbsp;</td><td><tt>iso-8859-9</tt></td><td>Turkish</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-1254</tt></td><td>Turkish</td><td>&nbsp;</td><td><tt>iso-8859-10</tt></td><td>Nordic</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-1255</tt></td><td>Hebrew</td><td>&nbsp;</td><td><tt>iso-8859-11</tt></td><td>Thai</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-1256</tt></td><td>Arabic</td><td>&nbsp;</td><td><tt>iso-8859-13</tt></td><td>Baltic Rim</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-1257</tt></td><td>Baltic</td><td>&nbsp;</td><td><tt>iso-8859-14</tt></td><td>Celtic</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-1258</tt></td><td>Vietnamese</td><td>&nbsp;</td><td><tt>iso-8859-15</tt></td><td>Western European / Latin-9</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-874</tt></td><td>Thai</td><td>&nbsp;</td><td><tt>iso-8859-16</tt></td><td>South Eastern European / Latin-10</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-932</tt></td><td>Japanese</td><td>&nbsp;</td><td><tt>koi8-r</tt></td><td>Russian</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-936</tt></td><td>Simplified Chinese</td><td>&nbsp;</td><td><tt>koi8-u</tt></td><td>Ukrainian</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>cp-949</tt></td><td>Korean</td><td>&nbsp;</td><td></td><td></td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>cp-950</tt></td><td>Traditional Chinese</td><td>&nbsp;</td><td></td><td></td></tr>
 </table>
 
 </td></tr>
@@ -1173,22 +1173,22 @@ and the relative vertical position within a line:
 
 <table border="0">
 <tr bgcolor="#6699dd"><td><b>Tag</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;b&gt; ... &lt;/b&gt;</tt></td><td>bold text</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;i&gt; ... &lt;/i&gt;</tt></td><td>italic text</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;u&gt; ... &lt;/u&gt;</tt></td><td>underlined text</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;o&gt; ... &lt;/o&gt;</tt></td><td>overlined text</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;s&gt; ... &lt;/s&gt;</tt></td><td>strike-through text</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;strong&gt; ... &lt;/strong&gt;</tt></td><td>bold text (same as <tt>&lt;b&gt;</tt>)</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;em&gt; ... &lt;/em&gt;</tt></td><td>emphasized text (same as <tt>&lt;i&gt;</tt>)</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;small&gt; ... &lt;/small&gt;</tt></td><td>text with reduced font size</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;sup&gt; ... &lt;/sup&gt;</tt></td><td>superscripted text</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;sub&gt; ... &lt;/sub&gt;</tt></td><td>subscripted text</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;h1&gt; ... &lt;/h1&gt;</tt></td><td>headline level 1</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;h2&gt; ... &lt;/h2&gt;</tt></td><td>headline level 2</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;h3&gt; ... &lt;/h3&gt;</tt></td><td>headline level 3</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;h4&gt; ... &lt;/h4&gt;</tt></td><td>headline level 4</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;h5&gt; ... &lt;/h5&gt;</tt></td><td>headline level 5</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;h6&gt; ... &lt;/h6&gt;</tt></td><td>headline level 6</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;b&gt; ... &lt;/b&gt;</tt></td><td>bold text</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;i&gt; ... &lt;/i&gt;</tt></td><td>italic text</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;u&gt; ... &lt;/u&gt;</tt></td><td>underlined text</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;o&gt; ... &lt;/o&gt;</tt></td><td>overlined text</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;s&gt; ... &lt;/s&gt;</tt></td><td>strike-through text</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;strong&gt; ... &lt;/strong&gt;</tt></td><td>bold text (same as <tt>&lt;b&gt;</tt>)</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;em&gt; ... &lt;/em&gt;</tt></td><td>emphasized text (same as <tt>&lt;i&gt;</tt>)</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;small&gt; ... &lt;/small&gt;</tt></td><td>text with reduced font size</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;sup&gt; ... &lt;/sup&gt;</tt></td><td>superscripted text</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;sub&gt; ... &lt;/sub&gt;</tt></td><td>subscripted text</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;h1&gt; ... &lt;/h1&gt;</tt></td><td>headline level 1</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;h2&gt; ... &lt;/h2&gt;</tt></td><td>headline level 2</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;h3&gt; ... &lt;/h3&gt;</tt></td><td>headline level 3</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;h4&gt; ... &lt;/h4&gt;</tt></td><td>headline level 4</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;h5&gt; ... &lt;/h5&gt;</tt></td><td>headline level 5</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;h6&gt; ... &lt;/h6&gt;</tt></td><td>headline level 6</td></tr>
 </table>
 
 \subsection structtags Structuring text markup
@@ -1199,15 +1199,15 @@ of the attributes.
 
 <table border="0">
 <tr bgcolor="#6699dd"><td><b>Tag</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;ul&gt; ... &lt;/ul&gt;</tt></td><td>\ref ulist</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;ol&gt; ... &lt;/ol&gt;</tt></td><td>\ref olist</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;li&gt; ... &lt;/li&gt;</tt></td><td><b>List item</b> of an ordered or unordered list</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;br /&gt;</tt></td><td><b>Line break</b>, positions the current position to the left margin of the next line</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;p&gt; ... &lt;/p&gt;</tt></td><td>\ref ptag</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;hr /&gt;</tt></td><td>\ref hrtag</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;a&gt; ... &lt;/a&gt;</tt></td><td>\ref atag</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;font&gt; ... &lt;/font&gt;</tt></td><td>\ref fonttag</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;table&gt; ... &lt;/table&gt;</tt></td><td>\ref tabletag</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;ul&gt; ... &lt;/ul&gt;</tt></td><td>\ref ulist</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;ol&gt; ... &lt;/ol&gt;</tt></td><td>\ref olist</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;li&gt; ... &lt;/li&gt;</tt></td><td><b>List item</b> of an ordered or unordered list</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;br /&gt;</tt></td><td><b>Line break</b>, positions the current position to the left margin of the next line</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;p&gt; ... &lt;/p&gt;</tt></td><td>\ref ptag</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;hr /&gt;</tt></td><td>\ref hrtag</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;a&gt; ... &lt;/a&gt;</tt></td><td>\ref atag</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;font&gt; ... &lt;/font&gt;</tt></td><td>\ref fonttag</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;table&gt; ... &lt;/table&gt;</tt></td><td>\ref tabletag</td></tr>
 </table>
 
 \subsection misctags Miscelleaneous text markup
@@ -1217,8 +1217,8 @@ Click on the tag description to see a detailed description of the attributes.
 
 <table border="0">
 <tr bgcolor="#6699dd"><td><b>Tag</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;msg&gt; ... &lt;/msg&gt;</tt></td><td>\ref msgtag</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;img ... /&gt;</tt></td><td>\ref imgtag</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;msg&gt; ... &lt;/msg&gt;</tt></td><td>\ref msgtag</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;img ... /&gt;</tt></td><td>\ref imgtag</td></tr>
 </table>
 
 \subsection ulist Unordered lists
@@ -1254,7 +1254,7 @@ list item is indented.
 <p><tt><b>I</b></tt> displays an uppercase roman number as the list item enumerator</p>
 <p><tt><b>z1|z2|z3|z4</b></tt> displays number symbols of one of the 4 number series in the \b ZapfDingBats font. This option should only be used for lists of at most 10 items.</p>
 </td></tr>
-<tr bgcolor="#ddeeff"><td><tt>start="number"</tt></td><td><i>number</i> represents the enumerator value of the first list item</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>start="number"</tt></td><td><i>number</i> represents the enumerator value of the first list item</td></tr>
 </table>
 
 \subsection ptag Paragraph
@@ -1294,10 +1294,10 @@ loading the referenced URL.
 <tr bgcolor="#6699dd"><td colspan="2"><b>Tag</b></td></tr>
 <tr bgcolor="#eeeeee"><td colspan="2"><b>&lt;a&gt;</b></td></tr>
 <tr bgcolor="#6699dd"><td><b>Attribute</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>href="url"</tt></td><td><i>url</i> is a unified resource locator.
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>href="url"</tt></td><td><i>url</i> is a unified resource locator.
 If <i>url</i> starts with <b>#</b> it is interpreted as a reference to an internal link anchor;
 the characters following <b>#</b> are used as the name of the anchor.</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>name="anchor"</tt></td><td><i>anchor</i> is the name of an internal link anchor.</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>name="anchor"</tt></td><td><i>anchor</i> is the name of an internal link anchor.</td></tr>
 </table>
 
 <b>Note:</b> Either the <b><tt>name</tt></b> or the <b><tt>href</tt></b> attribute may be specified, but not both.
@@ -1313,8 +1313,8 @@ font size and colour can be set. Attributes not given retain their previous valu
 <tr bgcolor="#6699dd"><td><b>Attribute</b></td><td><b>Description</b></td></tr>
 <tr bgcolor="#eeeeee"><td valign="top"><tt>face="fontfamily"</tt></td><td>The name of the font family. It can be the name of one of the
 14 core fonts or the name of a font previously added by wxPdfDocument::AddFont.</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>size="fontsize"</tt></td><td>The font size in points</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>color="fontcolour"</tt></td><td>The font colour in HTML notation, i.e. <b><i>\#rrggbb</i></b>,
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>size="fontsize"</tt></td><td>The font size in points</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>color="fontcolour"</tt></td><td>The font colour in HTML notation, i.e. <b><i>\#rrggbb</i></b>,
 or as a named colour, i.e. <b><i>red</i></b>.</td></tr>
 </table>
 
@@ -1398,7 +1398,7 @@ The attribute value consists of the combination of up to 4 letters:
 <b> &gt; 0</b> - borders on all sides of each cell<br>
 </td></tr>
 <tr bgcolor="#ddeeff"><td valign="top"><tt>align="left|right|center"</tt></td><td>Defines the horizontal alignment of the table. Default is the alignment of the surrounding context.</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>valign="top|middle|bottom"</tt></td><td>Defines the vertical alignment of the table. Default is <i>top</i>.</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>valign="top|middle|bottom"</tt></td><td>Defines the vertical alignment of the table. Default is <i>top</i>.</td></tr>
 <tr bgcolor="#ddeeff"><td valign="top"><tt>cellpadding="number"</tt></td><td><i>Number</i> defines the padding width on each side of a cell. Default is 0.</td></tr>
 </table>
 
@@ -1406,9 +1406,9 @@ The supported tags and their attributes are shown in the following tables:
 
 <table border="0">
 <tr bgcolor="#6699dd"><td><b>Tag</b></td><td><b>Description</b></td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;table&gt; ... &lt;/table&gt;</tt></td><td>Groups the definitions of column widths. Contains one or more &lt;col&gt; tags.</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>&lt;colgroup&gt; ... &lt;/colgroup&gt;</tt></td><td>Groups the definitions of column widths. Contains one or more &lt;col&gt; tags.</td></tr>
-<tr bgcolor="#ddeeff"><td><tt>&lt;col width="width" span="number"&gt; ... &lt;/col&gt;</tt></td><td>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;table&gt; ... &lt;/table&gt;</tt></td><td>Groups the definitions of column widths. Contains one or more &lt;col&gt; tags.</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>&lt;colgroup&gt; ... &lt;/colgroup&gt;</tt></td><td>Groups the definitions of column widths. Contains one or more &lt;col&gt; tags.</td></tr>
+<tr bgcolor="#ddeeff"><td style="color:#000000"><tt>&lt;col width="width" span="number"&gt; ... &lt;/col&gt;</tt></td><td>
 Defines the <i>width</i> of one or more columns. <i>number</i> specifies for how many columns the width is specified, default is 1.
 </td></tr>
 <tr bgcolor="#eeeeee"><td valign="top"><tt>&lt;thead odd="background colour for odd numbered rows" even="background colour for even numbered rows"&gt; ... &lt;/thead&gt;</tt></td>
@@ -1447,7 +1447,7 @@ the combination of up to 4 letters:
 \b R - border on the right side of the cell</p>
 .</td></tr>
 <tr bgcolor="#ddeeff"><td valign="top"><tt>align="left|right|center"</tt></td><td>Defines the horizontal alignment of the cell content. Default is <i>left</i>.</td></tr>
-<tr bgcolor="#eeeeee"><td><tt>valign="top|middle|bottom"</tt></td><td>Defines the vertical alignment of the cell content. Default is <i>top</i>.</td></tr>
+<tr bgcolor="#eeeeee"><td style="color:#000000"><tt>valign="top|middle|bottom"</tt></td><td>Defines the vertical alignment of the cell content. Default is <i>top</i>.</td></tr>
 <tr bgcolor="#ddeeff"><td valign="top"><tt>bgcolor="background colour"</tt></td><td>The background colour of the cell in HTML notation, i.e. <b><i>\#rrggbb</i></b>,
 or as a named colour, i.e. <b><i>red</i></b>. This attribute overrides the background colour specification of the row.
 If neither a row nor a cell background colour is specified the background is transparent.</td></tr>
