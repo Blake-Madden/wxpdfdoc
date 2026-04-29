@@ -197,7 +197,7 @@ public:
   */
   wxArrayInt GetKerningWidthArray(const wxString& s) const;
 
-  /// Check whether the font oan show all characters of a given string
+  /// Check whether the font can show all characters of a given string
   /**
   * \param s the string to be checked
   * \return TRUE if the font can show all characters of the string, FALSE otherwise
@@ -293,8 +293,20 @@ public:
   virtual wxMBConv* GetEncodingConv() const;
 #endif
 
+  /**
+  * Check whether the font has associated VOLT (Visual OpenType Layout Tool) data.
+  * \return TRUE if the font has VOLT data, FALSE otherwise
+  */
   bool HasVoltData() const;
 
+  /**
+  * Apply VOLT (Visual OpenType Layout Tool) data to a string.
+  * VOLT data provides advanced OpenType layout information (such as ligatures, 
+  * contextual alternates, and kerning) to perform complex glyph substitution 
+  * and positioning based on the font's internal OpenType tables.
+  * \param txt the input string
+  * \return the string with OpenType layout transformations applied
+  */
   wxString ApplyVoltData(const wxString& txt) const;
 
 protected:

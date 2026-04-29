@@ -32,18 +32,30 @@ public:
   wxPdfAnnotation(double x, double y, const wxString& text);
 
   /// Copy constructor
+  /**
+  * \param annotation The annotation to copy
+  */
   wxPdfAnnotation(const wxPdfAnnotation& annotation);
 
   /// Destructor
   virtual ~wxPdfAnnotation() {}
 
   /// Get the X offset of the annotation
+  /**
+  * \return The X offset
+  */
   double GetX() const { return m_x; }
 
   /// Get the Y offset of the annotation
+  /**
+  * \return The Y offset
+  */
   double GetY() const { return m_y; }
 
   /// Get the text of the annotation
+  /**
+  * \return The annotation text
+  */
   wxString GetText() const { return m_text; }
 
 private:

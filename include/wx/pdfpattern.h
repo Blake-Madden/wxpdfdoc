@@ -54,45 +54,87 @@ public:
   wxPdfPattern(int index, double width, double height, wxPdfPatternStyle patternStyle, const wxColour& drawColour, const wxColour& fillColour = wxColour());
 
   /// Copy constructor
+  /**
+  * \param pattern The pattern to copy
+  */
   wxPdfPattern(const wxPdfPattern& pattern);
 
   /// Set object index
+  /**
+  * \param index The object index
+  */
   void SetObjIndex(int index) { m_objIndex = index; };
 
   /// Get object index
+  /**
+  * \return The object index
+  */
   int GetObjIndex() const { return m_objIndex; };
 
   /// Get pattern index
+  /**
+  * \return The pattern index
+  */
   int GetIndex() const { return m_index; };
 
   /// Set image
+  /**
+  * \param image The image to use as a pattern
+  */
   void SetImage(wxPdfImage* image) { m_image = image; };
 
   /// Get image
+  /**
+  * \return The image used as a pattern
+  */
   wxPdfImage* GetImage() const {return m_image; };
 
   /// Get pattern width
+  /**
+  * \return The pattern width
+  */
   double GetWidth() const {return m_width; };
 
   /// Get pattern height
+  /**
+  * \return The pattern height
+  */
   double GetHeight() const {return m_height; };
 
   /// Get template id
+  /**
+  * \return The template ID
+  */
   int GetTemplateId() const { return m_templateId; }
 
   ///  Get pattern style
+  /**
+  * \return The pattern style
+  */
   wxPdfPatternStyle GetPatternStyle() const { return m_patternStyle; }
 
   ///  Get draw color
+  /**
+  * \return The draw colour
+  */
   wxColour GetDrawColour() const { return m_drawColour; }
 
   ///  Set fill color
+  /**
+  * \param fillColour The fill colour
+  */
   void SetFillColour(const wxColour& fillColour) { m_fillColour = fillColour; m_hasFillColour = true; }
  
   ///  Get fill color
+  /**
+  * \return The fill colour
+  */
   wxColour GetFillColour() const { return m_fillColour; }
 
   /// Check whether fill color is set
+  /**
+  * \return TRUE if the pattern has a fill colour, FALSE otherwise
+  */
   bool HasFillColour() const { return m_hasFillColour; }
 
 private:

@@ -434,7 +434,7 @@ public:
 
   /// Get the font's CMap (Type 0 only)
   /**
-  * return the font's CMap descriptor
+  * \return the font's CMap descriptor
   */
   wxString GetCMap() const;
 

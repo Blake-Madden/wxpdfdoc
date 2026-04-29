@@ -63,51 +63,97 @@ public:
                  const wxPdfColour& colour = wxPdfColour());
 
   /// Copy constructor
+  /**
+  * \param lineStyle The line style to copy
+  */
   wxPdfLineStyle(const wxPdfLineStyle& lineStyle);
 
   /// Assignment operator
+  /**
+  * \param lineStyle The line style to copy
+  * \return A reference to this line style
+  */
   wxPdfLineStyle& operator= (const wxPdfLineStyle& lineStyle);
 
   /// Destructor
   virtual ~wxPdfLineStyle();
 
   /// Check whether the style is initialized.
+  /**
+  * \return TRUE if the style is set, FALSE otherwise
+  */
   bool IsSet() const { return m_isSet; }
 
   /// Set the line width
+  /**
+  * \param width The line width
+  */
   void SetWidth(double width) { m_width = width; }
 
   /// Get the line width
+  /**
+  * \return The line width
+  */
   double GetWidth() const { return m_width; }
 
   /// Set the line ending style
+  /**
+  * \param cap The line cap style
+  */
   void SetLineCap(const wxPdfLineCap cap) { m_cap = cap; }
 
   /// Get the line ending style
+  /**
+  * \return The line cap style
+  */
   wxPdfLineCap GetLineCap() const { return m_cap; }
 
   /// Set the line join style
+  /**
+  * \param join The line join style
+  */
   void SetLineJoin(const wxPdfLineJoin join) { m_join = join; }
 
   /// Get the line join style
+  /**
+  * \return The line join style
+  */
   wxPdfLineJoin GetLineJoin() const { return m_join; }
 
   /// Set the dash pattern
+  /**
+  * \param dash The dash pattern array
+  */
   void SetDash(const wxPdfArrayDouble& dash) { m_dash = dash; }
 
   /// Get the dash pattern
+  /**
+  * \return The dash pattern array
+  */
   const wxPdfArrayDouble& GetDash() const { return m_dash; }
 
   /// Set the dash pattern phase
+  /**
+  * \param phase The dash pattern phase
+  */
   void SetPhase(double phase) { m_phase = phase; }
 
   /// Get the dash pattern phase
+  /**
+  * \return The dash pattern phase
+  */
   double GetPhase() const { return m_phase; }
 
   /// Set the line colour
+  /**
+  * \param colour The line colour
+  */
   void SetColour(const wxPdfColour& colour) { m_colour = colour; };
 
   /// Get the line colour
+  /**
+  * \return The line colour
+  */
   const wxPdfColour& GetColour() const { return m_colour; };
 
 private:

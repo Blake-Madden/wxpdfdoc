@@ -26,7 +26,7 @@
 
 class WXDLLIMPEXP_FWD_PDFDOC wxPdfFontData;
 
-/// Class representing a table directory entry for TrueType fonts (For internal use only)
+/// Class representing a table directory entry for TrueType fonts (for internal use only)
 class WXDLLIMPEXP_PDFDOC wxPdfTableDirectoryEntry
 {
 public:
@@ -82,8 +82,8 @@ public:
 
   /// Identify font based on a font data buffer
   /**
-  * \param fontData the font data buffer to be identified
-  * \param fontDataSize the size of the font data buffer
+  * \param fontBuffer the font data buffer to be identified
+  * \param fontBufferSize the size of the font data buffer
   * \return a reference to a new font data instance
   */
   wxPdfFontData* IdentifyFont(const char* fontBuffer, size_t fontBufferSize);

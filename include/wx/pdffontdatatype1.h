@@ -45,7 +45,7 @@ public:
   */
   virtual double GetStringWidth(const wxString& s, const wxPdfEncoding* encoding = NULL, bool withKerning = false, double charSpacing = 0) const;
 
-  /// Check whether the font oan show all characters of a given string
+  /// Check whether the font can show all characters of a given string
   /**
   * \param s the string to be checked
   * \param encoding the character to glyph mapping
@@ -96,7 +96,8 @@ public:
   * \param subsetGlyphs the mapping of glyphs to subset glyphs
   * \return the string representation of the character widths
   */
-  virtual wxString GetWidthsAsString(const wxArrayString& glyphNames, bool subset = false, wxPdfSortedArrayInt* usedGlyphs = NULL, wxPdfChar2GlyphMap* subsetGlyphs = NULL) const;
+  virtual wxString GetWidthsAsString(const wxArrayString& glyphNames, bool subset = false,
+                                     wxPdfSortedArrayInt* usedGlyphs = NULL, wxPdfChar2GlyphMap* subsetGlyphs = NULL) const;
 
   /// Get a list of glyph names available in the font
   /**

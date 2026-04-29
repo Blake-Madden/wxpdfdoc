@@ -31,9 +31,16 @@ public:
   virtual ~wxPdfEncoding();
 
   /// Copy constructor
+  /**
+  * \param encoding The encoding to copy
+  */
   wxPdfEncoding(const wxPdfEncoding& encoding);
 
   /// Assignment operator
+  /**
+  * \param encoding The encoding to copy
+  * \return A reference to this encoding
+  */
   wxPdfEncoding& operator=(const wxPdfEncoding& encoding);
 
   /// Check whether the encoding is valid
@@ -73,6 +80,9 @@ public:
   wxPdfArrayUint32 GetCMap() const;
 
   /// Initialize the encoding map
+  /**
+  * This method initializes the internal character-to-glyph mapping.
+  */
   void InitializeEncodingMap();
 
   /// Get the encoding map
@@ -143,6 +153,7 @@ public:
 
   /// Check whether a given Unicode character is included in the encoding
   /**
+  * \param unicode The Unicode character to check
   * \return TRUE if the Unicode character is included, FALSE otherwise
   */
   virtual bool IsIncluded(wxUint32 unicode) const = 0;

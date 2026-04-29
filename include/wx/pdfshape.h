@@ -73,9 +73,15 @@ public:
   void CurveTo(double x1, double y1, double x2, double y2, double x3, double y3);
 
   /// Close (sub)path of the shape
+  /**
+  * Appends a closepath segment to the current subpath.
+  */
   void ClosePath();
 
   /// Get the number of segments of the shape
+  /**
+  * \return The number of segments
+  */
   unsigned int GetSegmentCount() const { return (unsigned int) m_types.GetCount(); }
 
   /// Get a specific segment of the shape (for internal use only)

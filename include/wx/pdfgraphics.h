@@ -26,24 +26,44 @@ class WXDLLIMPEXP_PDFDOC wxPdfExtGState
 {
 public:
   /// Constructor
+  /**
+  * \param lineAlpha Alpha value for drawing operations
+  * \param fillAlpha Alpha value for filling operations
+  * \param blendMode Blend mode
+  */
   wxPdfExtGState(double lineAlpha, double fillAlpha, wxPdfBlendMode blendMode);
 
   /// Destructor
   virtual ~wxPdfExtGState();
 
   /// Set ExtGState object index
+  /**
+  * \param n Object index
+  */
   void SetObjIndex(int n) { m_n = n; }
 
   /// Get ExtGState object index
+  /**
+  * \return The object index
+  */
   int  GetObjIndex() { return m_n; }
 
   /// Get the alpha value for drawing operations
+  /**
+  * \return The line alpha value
+  */
   double GetLineAlpha() const { return m_lineAlpha; }
 
   /// Get the alpha value for filling operations
+  /**
+  * \return The fill alpha value
+  */
   double GetFillAlpha() const { return m_fillAlpha; }
 
   /// Get the blend mode
+  /**
+  * \return The blend mode
+  */
   wxPdfBlendMode GetBlendMode() const { return m_blendMode; };
 
 private:
@@ -58,6 +78,11 @@ class WXDLLIMPEXP_PDFDOC wxPdfFlatPath
 {
 public:
   /// Constructor
+  /**
+  * \param shape Associated shape
+  * \param flatness Flatness tolerance (default: 1)
+  * \param limit Recursion limit (default: 10)
+  */
   wxPdfFlatPath(const wxPdfShape* shape, double flatness = 1, int limit = 10);
 
   /// Destructor
@@ -83,9 +108,15 @@ public:
   void SubdivideCubic();
 
   /// Check whether path iterator is done
+  /**
+  * \return TRUE if the iterator is done, FALSE otherwise
+  */
   bool IsDone() { return m_done; }
 
   /// Measure flattened path length
+  /**
+  * \return The length of the flattened path
+  */
   double MeasurePathLength();
 
 private:

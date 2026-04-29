@@ -101,9 +101,16 @@ public:
   wxPdfColour(const wxPdfPattern& pattern);
 
   /// Copy constructor
+  /**
+  * \param colour The colour to copy from
+  */
   wxPdfColour(const wxPdfColour& colour);
 
   /// Assignment operator
+  /**
+  * \param colour The colour to copy from
+  * \return A reference to this colour object
+  */
   wxPdfColour& operator=(const wxPdfColour& colour);
 
   /// Set grayscale colour
@@ -183,9 +190,16 @@ public:
 
 protected:
   /// Constructor for internal colour string representation
+  /**
+  * \param colour Internal colour string
+  * \param intern Internal flag
+  */
   wxPdfColour(const wxString& colour, bool intern);
 
   /// Get a colour database
+  /**
+  * \return Pointer to the colour database
+  */
   static wxColourDatabase* GetColourDatabase();
 
 private:
@@ -197,9 +211,19 @@ private:
 };
 
 /// Comparison operator for equality of colour objects
+/**
+* \param a First colour object
+* \param b Second colour object
+* \return TRUE if the colours match, FALSE otherwise
+*/
 bool operator==(const wxPdfColour& a, const wxPdfColour& b);
 
 /// Comparison operator for inequality of colour objects
+/**
+* \param a First colour object
+* \param b Second colour object
+* \return TRUE if the colours do not match, FALSE otherwise
+*/
 bool operator!=(const wxPdfColour& a, const wxPdfColour& b);
 
 #endif

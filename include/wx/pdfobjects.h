@@ -35,63 +35,121 @@ class WXDLLIMPEXP_PDFDOC wxPdfObject
 {
 public:
   /// Constructor
+  /**
+  * \param type The object type
+  */
   wxPdfObject(int type);
 
   /// Destructor
   virtual ~wxPdfObject();
 
   /// Get the type of the object
+  /**
+  * \return The object type
+  */
   int GetType() { return m_type; }
 
   /// Set object and generation number
+  /**
+  * \param objNum The object number
+  * \param objGen The generation number
+  */
   void SetObjNum(int objNum, int objGen = 0);
 
   /// Get object number
+  /**
+  * \return The object number
+  */
   int GetNumber() { return m_objNum; }
 
   /// Get generation number
+  /**
+  * \return The generation number
+  */
   int GetGeneration() { return m_objGen; }
 
   /// Set actual object id
+  /**
+  * \param actualId The actual object ID
+  */
   void SetActualId(int actualId) { m_actualId = actualId; }
 
   // Get actual object id
+  /**
+  * \return The actual object ID
+  */
   int GetActualId() { return m_actualId; }
 
   /// Flag this object as created through an indirect reference
+  /**
+  * \param indirect Flag whether the object is an indirect reference
+  */
   void SetCreatedIndirect(bool indirect) { m_indirect = indirect; }
 
   /// Check whether this object was created through an indirect reference
+  /**
+  * \return TRUE if the object was created through an indirect reference, FALSE otherwise
+  */
   bool IsCreatedIndirect() { return m_indirect; }
 
   /// Check whether this object can be in an object stream
+  /**
+  * \return TRUE if the object can be in an object stream, FALSE otherwise
+  */
   bool CanBeInObjStm();
 
   /// Checks whether this is a wxPdfNull object.
+  /**
+  * \return TRUE if this is a null object, FALSE otherwise
+  */
   bool IsNull() { return (m_type == OBJTYPE_NULL); }
 
   /// Checks whether this is a wxPdfBoolean object.
+  /**
+  * \return TRUE if this is a boolean object, FALSE otherwise
+  */
   bool IsBoolean() { return (m_type == OBJTYPE_BOOLEAN); }
 
   /// Checks whether this is a wxPdfNumber object.
+  /**
+  * \return TRUE if this is a number object, FALSE otherwise
+  */
   bool IsNumber() { return (m_type == OBJTYPE_NUMBER); }
 
   /// Checks whether this is a wxPdfString object.
+  /**
+  * \return TRUE if this is a string object, FALSE otherwise
+  */
   bool IsString() { return (m_type == OBJTYPE_STRING); }
 
   /// Checks whether this is a wxPdfName object.
+  /**
+  * \return TRUE if this is a name object, FALSE otherwise
+  */
   bool IsName() { return (m_type == OBJTYPE_NAME); }
 
   /// Checks whether this is a wxPdfArray object.
+  /**
+  * \return TRUE if this is an array object, FALSE otherwise
+  */
   bool IsArray() { return (m_type == OBJTYPE_ARRAY); }
 
   /// Checks whether this is a wxPdfDictionary object.
+  /**
+  * \return TRUE if this is a dictionary object, FALSE otherwise
+  */
   bool IsDictionary() { return (m_type == OBJTYPE_DICTIONARY); }
 
   /// Checks whether this PdfObject is of the type PdfStream.
+  /**
+  * \return TRUE if this is a stream object, FALSE otherwise
+  */
   bool IsStream() { return (m_type == OBJTYPE_STREAM); }
 
   /// Checks if this is an indirect object.
+  /**
+  * \return TRUE if this is an indirect object, FALSE otherwise
+  */
   bool IsIndirect() { return (m_type == OBJTYPE_INDIRECT); }
 
 protected:
@@ -118,6 +176,10 @@ class WXDLLIMPEXP_PDFDOC wxPdfIndirectReference : public wxPdfObject
 {
 public:
   /// Constructor
+  /**
+  * \param number The object number
+  * \param generation The generation number
+  */
   wxPdfIndirectReference(int number, int generation = 0);
 
   /// Destructor
@@ -129,12 +191,19 @@ class WXDLLIMPEXP_PDFDOC wxPdfLiteral : public wxPdfObject
 {
 public:
   /// Constructor
+  /**
+  * \param type The object type
+  * \param value The literal value
+  */
   wxPdfLiteral(int type, const wxString& value);
 
   /// Destructor
   virtual ~wxPdfLiteral();
 
   /// Get string value of the literal
+  /**
+  * \return The literal value
+  */
   wxString GetValue() { return m_value; };
 
 private:
@@ -146,15 +215,24 @@ class WXDLLIMPEXP_PDFDOC wxPdfBoolean : public wxPdfObject
 {
 public:
   /// Constructor
+  /**
+  * \param value The boolean value
+  */
   wxPdfBoolean(bool value);
 
-  /// Constructor
+  /// Destructor
   virtual ~wxPdfBoolean();
 
   /// Get boolean value
+  /**
+  * \return The boolean value
+  */
   bool GetValue() { return m_value; };
 
   /// Get boolean value as string
+  /**
+  * \return The boolean value as a string ("true" or "false")
+  */
   wxString GetAsString();
 
 private:
@@ -166,18 +244,30 @@ class WXDLLIMPEXP_PDFDOC wxPdfString : public wxPdfObject
 {
 public:
   /// Constructor
+  /**
+  * \param value The string value
+  */
   wxPdfString(const wxString& value);
 
   /// Destructor
   virtual ~wxPdfString();
 
   /// Get value of the string
+  /**
+  * \return The string value
+  */
   wxString GetValue() { return m_value; };
 
   /// Set hexadecimal string flag
+  /**
+  * \param isHexString Flag whether the string is hexadecimal
+  */
   void SetIsHexString(bool isHexString) { m_isHexString = isHexString; }
 
   /// Check whether string is hexadecimal
+  /**
+  * \return TRUE if the string is hexadecimal, FALSE otherwise
+  */
   bool IsHexString() const { return m_isHexString; }
 
 private:
@@ -190,27 +280,48 @@ class WXDLLIMPEXP_PDFDOC wxPdfNumber : public wxPdfObject
 {
 public:
   /// Constructor (value as string)
+  /**
+  * \param value The string representation of the numeric value
+  */
   wxPdfNumber(const wxString& value);
 
   /// Constructor (value as integer)
+  /**
+  * \param value The integer value
+  */
   wxPdfNumber(int value);
 
   /// Constructor (value as floating point)
+  /**
+  * \param value The floating point value
+  */
   wxPdfNumber(double value);
 
   /// Destructor
   virtual ~wxPdfNumber();
 
   /// Get value as floating point
+  /**
+  * \return The numeric value as double
+  */
   double GetValue() { return m_value; }
 
   /// Get value as integer
+  /**
+  * \return The numeric value as integer
+  */
   int GetInt() { return (int) m_value; }
 
   /// Get value as string
+  /**
+  * \return The string representation of the numeric value
+  */
   wxString GetAsString() { return m_string; }
 
   /// Check whether value is integer
+  /**
+  * \return TRUE if the value is an integer, FALSE otherwise
+  */
   bool IsInt() { return m_isInt; }
 
 private:
@@ -227,12 +338,18 @@ public:
   wxPdfName();
 
   /// Constructor
+  /**
+  * \param name The name value
+  */
   wxPdfName(const wxString& name);
 
   /// Destructor
   virtual ~wxPdfName();
 
   /// Get name
+  /**
+  * \return The name value
+  */
   wxString GetName() { return m_name; };
 
 private:
@@ -250,18 +367,34 @@ public:
   virtual ~wxPdfArray();
 
   /// Append an object to the array
+  /**
+  * \param obj The object to append
+  */
   void Add(wxPdfObject* obj);
 
   /// Append an integer value to the array
+  /**
+  * \param value The integer value to append
+  */
   void Add(int value);
 
   /// Append a floating point value to the array
+  /**
+  * \param value The floating point value to append
+  */
   void Add(double value);
 
   /// Get the array element with the given index
+  /**
+  * \param index The element index
+  * \return The object at the given index, or NULL if the index is out of range
+  */
   wxPdfObject* Get(size_t index);
 
   /// Get the size of the array
+  /**
+  * \return The number of elements in the array
+  */
   size_t GetSize() { return m_array.GetCount(); }
 
 private:
@@ -279,21 +412,39 @@ public:
   wxPdfDictionary();
 
   /// Constructor
+  /**
+  * \param type The dictionary type
+  */
   wxPdfDictionary(const wxString& type);
 
   /// Destructor
   virtual ~wxPdfDictionary();
 
   /// Add a (name,value) pair to the dictionary
+  /**
+  * \param key The key
+  * \param value The value
+  */
   void Put(wxPdfName* key, wxPdfObject* value);
 
   /// Add a (name,value) pair to the dictionary
+  /**
+  * \param key The key name
+  * \param value The value
+  */
   void Put(const wxString& key, wxPdfObject* value);
 
   /// Get the value identified by the given key
+  /**
+  * \param key The key name
+  * \return The object associated with the key, or NULL if the key is not found
+  */
   wxPdfObject* Get(const wxString& key);
 
   /// Get the dictionary map
+  /**
+  * \return The hash map containing the dictionary entries
+  */
   wxPdfDictionaryMap* GetHashMap() { return m_hashMap; }
 
 private:
@@ -308,39 +459,74 @@ public:
   wxPdfStream();
 
   /// Constructor
+  /**
+  * \param offset The offset of the stream data
+  */
   wxPdfStream(off_t offset);
 
   /// Destructor
   virtual ~wxPdfStream();
 
   /// Get the offset of the stream data
+  /**
+  * \return The stream data offset
+  */
   off_t GetOffset() { return m_offset; }
 
   /// Set the associated stream dictionary
+  /**
+  * \param dictionary The stream dictionary
+  */
   void SetDictionary(wxPdfDictionary* dictionary) { m_dictionary = dictionary; }
 
   /// Get the associated stream dictionary
+  /**
+  * \return The stream dictionary
+  */
   wxPdfDictionary* GetDictionary() { return m_dictionary; }
 
   /// Set the stream data buffer
+  /**
+  * \param buffer The memory output stream containing the data
+  */
   void SetBuffer(wxMemoryOutputStream* buffer) { m_buffer = buffer; }
 
   /// Get the stream data buffer
+  /**
+  * \return The memory output stream containing the data
+  */
   wxMemoryOutputStream* GetBuffer() { return m_buffer; }
 
   /// Get a value identified by the given key from the associated dictionary
+  /**
+  * \param key The key name
+  * \return The object associated with the key in the stream dictionary
+  */
   wxPdfObject* Get(const wxString& key);
 
   /// Set flag whether an object stream has already read the object index
+  /**
+  * \param hasObjOffsets Flag whether the object stream has object offsets
+  */
   void SetHasObjOffsets(bool hasObjOffsets) { m_hasObjOffsets = hasObjOffsets; }
 
   /// Get flag whether the offsets of objects in an object stream are available
+  /**
+  * \return TRUE if the offsets are available, FALSE otherwise
+  */
   bool HasObjOffsets() { return m_hasObjOffsets; }
 
   /// Get a pointer to the object offsets array
+  /**
+  * \return Pointer to the array of object offsets
+  */
   wxArrayInt* GetObjOffsets() { return &m_objOffsets; }
 
   /// Get the offset of an object in the object stream
+  /**
+  * \param index The object index
+  * \return The offset of the object, or -1 if the index is out of range
+  */
   int GetObjOffset(int index) const;
 
 private:
@@ -356,27 +542,50 @@ class WXDLLIMPEXP_PDFDOC wxPdfObjectQueue
 {
 public:
   /// Constructor
+  /**
+  * \param originalId The original object number
+  * \param actualObjectId The actual object number
+  * \param object The associated object
+  */
   wxPdfObjectQueue(int originalId = 0, int actualObjectId = 0, wxPdfObject* object = NULL);
 
   /// Destructor
   virtual ~wxPdfObjectQueue() {}
 
   /// Get original object id
+  /**
+  * \return The original object number
+  */
   int GetOriginalObjectId() const { return m_originalObjectId; }
 
   /// Get actual object id
+  /**
+  * \return The actual object number
+  */
   int GetActualObjectId() const { return m_actualObjectId; }
 
   /// Get associated object
+  /**
+  * \return The associated object
+  */
   wxPdfObject* GetObject() const { return m_object; }
 
   /// Set associated object
+  /**
+  * \param object The associated object
+  */
   void SetObject(wxPdfObject* object) { m_object = object; }
 
   /// Get next queue entry
+  /**
+  * \return The next queue entry, or NULL if this is the last entry
+  */
   wxPdfObjectQueue* GetNext() const { return m_next; }
 
   /// Set next queue entry
+  /**
+  * \param next The next queue entry
+  */
   void SetNext(wxPdfObjectQueue* next) { m_next = next; }
 
 private:

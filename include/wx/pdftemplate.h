@@ -29,42 +29,78 @@ class WXDLLIMPEXP_PDFDOC wxPdfTemplate
 {
 public:
   /// Constructor
+  /**
+  * \param templateId The template index
+  */
   wxPdfTemplate(int templateId);
 
   /// Destructor
   virtual ~wxPdfTemplate();
 
   /// Get index of the template
+  /**
+  * \return The template index
+  */
   int    GetIndex()  { return m_templateId; }
 
   /// Get X position of template
+  /**
+  * \return The X position
+  */
   double GetX()      { return m_x; }
 
   /// Get Y position of template
+  /**
+  * \return The Y position
+  */
   double GetY()      { return m_y; }
 
   /// Get width of template
+  /**
+  * \return The template width
+  */
   double GetWidth()  { return m_w; }
 
   /// Get height of template
+  /**
+  * \return The template height
+  */
   double GetHeight() { return m_h; }
 
   /// Set object index
+  /**
+  * \param n The object index
+  */
   void SetObjIndex(int n) { m_n = n; }
 
   /// Get object index
+  /**
+  * \return The object index
+  */
   int  GetObjIndex() { return m_n; }
 
   /// Set the associated parser
+  /**
+  * \param parser The parser associated with the template
+  */
   void SetParser(wxPdfParser* parser) { m_parser = parser; }
 
   /// Get the associated parser
+  /**
+  * \return The associated parser
+  */
   wxPdfParser* GetParser() { return m_parser; }
 
   /// Set the array of page resource objects
+  /**
+  * \param resources The page resource objects
+  */
   void SetResources(wxPdfObject* resources) { m_resources = resources; }
 
   /// Get the array of page resource objects
+  /**
+  * \return The page resource objects
+  */
   wxPdfObject* GetResources() { return m_resources; }
 
 private:

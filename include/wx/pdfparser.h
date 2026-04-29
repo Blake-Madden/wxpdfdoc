@@ -48,76 +48,154 @@ class WXDLLIMPEXP_FWD_PDFDOC wxPdfInfo;
 #define TOKEN_OTHER            13
 
 /// Class representing a tokenizer for parsing PDF documents.
+/**
+* The tokenizer reads a PDF stream and breaks it into tokens like strings, names, numbers, etc.
+* It also handles identifying the XRef (Cross-Reference) table, which contains the byte
+* offsets of all indirect objects in the PDF file.
+*/
 class WXDLLIMPEXP_PDFDOC wxPdfTokenizer
 {
 public:
   /// Constructor
+  /**
+  * \param inputStream The stream to tokenize
+  */
   wxPdfTokenizer(wxInputStream* inputStream);
 
   /// Destructor
   virtual ~wxPdfTokenizer();
 
   /// Set current offset position in stream
+  /**
+  * \param pos The offset to seek to
+  * \return The new offset position
+  */
   off_t Seek(off_t pos);
 
   /// Get current offset position in stream
+  /**
+  * \return The current offset position
+  */
   off_t Tell();
 
   /// Go back one position in the stream
+  /**
+  * \param ch The character to put back
+  */
   void BackOnePosition(int ch);
 
   /// Get length of stream
+  /**
+  * \return The total length of the stream
+  */
   off_t GetLength();
 
   /// Read one byte from stream
+  /**
+  * \return The character read, or EOF
+  */
   int ReadChar();
 
   /// Read size bytes from stream
+  /**
+  * \param size The number of bytes to read
+  * \return A memory stream containing the read bytes
+  */
   wxMemoryOutputStream* ReadBuffer(size_t size);
 
   /// Find the offset of the startxref tag
+  /**
+  * \return The byte offset of the cross-reference table
+  */
   off_t GetStartXRef();
 
   /// Read a string
+  /**
+  * \param size The number of characters to read
+  * \return The string read from the stream
+  */
   wxString ReadString(int size);
 
   /// Check the header of the document stream
+  /**
+  * \return The PDF version string (e.g., "%PDF-1.4")
+  */
   wxString CheckPdfHeader();
 
   /// Get the next token
+  /**
+  * \return TRUE if a token was found, FALSE otherwise
+  */
   bool NextToken();
 
   /// Get the next valid token
+  /**
+  * Skips comments and whitespace to find the next meaningful token.
+  */
   void NextValidToken();
 
   /// Get the type of the last token
+  /**
+  * \return The token type (e.g., @c TOKEN_STRING, @c TOKEN_NUMBER)
+  */
   int GetTokenType() const;
 
   /// Get the token value as a string
+  /**
+  * \return The string value of the token
+  */
   wxString GetStringValue() const;
 
   /// Get the token value as an integer
+  /**
+  * \return The integer value of the token
+  */
   int GetIntValue() const;
 
   /// Check whether the token is a hexadecimal string
+  /**
+  * \return TRUE if it is a hex string, FALSE otherwise
+  */
   bool IsHexString() const { return m_hexString; }
 
   /// Get object reference
+  /**
+  * \return The object reference number
+  */
   int GetReference() const;
 
   /// Get object generation
+  /**
+  * \return The object generation number
+  */
   int GetGeneration() const;
 
   /// Check byte whether it represents a white space character
+  /**
+  * \param ch The character to check
+  * \return TRUE if it is whitespace, FALSE otherwise
+  */
   static bool IsWhitespace(int ch);
 
   /// Check byte whether it is a delimiter
+  /**
+  * \param ch The character to check
+  * \return TRUE if it is a delimiter, FALSE otherwise
+  */
   static bool IsDelimiter(int ch);
 
   /// Check byte whether it is a delimiter or a whitespace character
+  /**
+  * \param ch The character to check
+  * \return TRUE if it is a delimiter or whitespace, FALSE otherwise
+  */
   static bool IsDelimiterOrWhitespace(int ch);
 
   /// Get hexadecimal character
+  /**
+  * \param v The integer value
+  * \return The hex character value
+  */
   static int GetHex(int v);
 
 private:
@@ -131,6 +209,10 @@ private:
 };
 
 /// Class representing an XRef entry (for internal use only)
+/**
+* This class stores information about an entry in the PDF cross-reference table,
+* which is used to locate objects within the file or within object streams.
+*/
 class WXDLLIMPEXP_PDFDOC wxPdfXRefEntry
 {
 public:
@@ -140,18 +222,27 @@ public:
   /// Destructor
   virtual ~wxPdfXRefEntry();
 
-  int m_type;    ///< Type of XRef entry
-  int m_ofs_idx; ///< Offset or index of object
-  int m_gen_ref; ///< Generation of object or reference of object stream containing the object
+  int m_type;    ///< Type of XRef entry (0: free, 1: normal, 2: in stream)
+  int m_ofs_idx; ///< Byte offset of object (type 1) or index in object stream (type 2)
+  int m_gen_ref; ///< Generation number (type 1) or object number of the object stream (type 2)
 };
 
 WX_DECLARE_USER_EXPORTED_OBJARRAY(wxPdfXRefEntry, wxPdfXRef, WXDLLIMPEXP_PDFDOC);
 
 /// Class representing a PDF parser. (For internal use only)
+/**
+* The parser uses a tokenizer to read the PDF file, identifies all indirect objects
+* via the cross-reference (XRef) table, and provides methods to access page-specific
+* resources and content streams.
+*/
 class WXDLLIMPEXP_PDFDOC wxPdfParser
 {
 public:
   /// Constructor
+  /**
+  * \param filename The name of the PDF file to parse
+  * \param password The password for encrypted documents
+  */
   wxPdfParser(const wxString& filename,
               const wxString& password = wxEmptyString);
 
@@ -159,57 +250,124 @@ public:
   virtual ~wxPdfParser();
 
   /// Check whether the PDF document to be parsed is valid
+  /**
+  * \return TRUE if the document was parsed successfully, FALSE otherwise
+  */
   bool IsOk() const;
 
   /// Get PDF version of parsed document
+  /**
+  * \return The PDF version string
+  */
   wxString GetPdfVersion() const { return m_pdfVersion; }
 
   /// Get number of pages in the parsed document
+  /**
+  * \return The number of pages
+  */
   unsigned int GetPageCount() const;
 
   /// Get the document information dictionary
+  /**
+  * \param[out] info The info object to populate
+  * \return TRUE if successful, FALSE otherwise
+  */
   bool GetSourceInfo(wxPdfInfo& info);
 
   /// Get the queue of referenced objects
+  /**
+  * \return The object queue
+  */
   wxPdfObjectQueue* GetObjectQueue() { return m_objectQueue; }
 
   /// Get the map of referenced objects
+  /**
+  * \return The object map
+  */
   wxPdfObjectMap* GetObjectMap() { return m_objectMap; }
 
   /// Append a referenced object to the queue
+  /**
+  * \param originalObjectId The original ID in the source file
+  * \param actualObjectId The new ID in the destination document
+  * \param obj The PDF object
+  */
   void AppendObject(int originalObjectId, int actualObjectId, wxPdfObject* obj);
 
   /// Get the resources of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The resources dictionary object
+  */
   wxPdfObject* GetPageResources(unsigned int pageno);
 
   /// Get the content stream collection of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \param[out] contents Array to be filled with content stream objects
+  */
   void GetContent(unsigned int pageno, wxArrayPtrVoid& contents);
 
   /// Get the media box of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The media box array
+  */
   wxPdfArrayDouble* GetPageMediaBox(unsigned int pageno);
 
   /// Get the crop box of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The crop box array
+  */
   wxPdfArrayDouble* GetPageCropBox(unsigned int pageno);
 
   /// Get the bleed box of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The bleed box array
+  */
   wxPdfArrayDouble* GetPageBleedBox(unsigned int pageno);
 
   /// Get the trim box of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The trim box array
+  */
   wxPdfArrayDouble* GetPageTrimBox(unsigned int pageno);
 
   /// Get the art box of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The art box array
+  */
   wxPdfArrayDouble* GetPageArtBox(unsigned int pageno);
 
   /// Get the rotation of a specific page
+  /**
+  * \param pageno The page number (1-based)
+  * \return The page rotation in degrees
+  */
   int GetPageRotation (unsigned int pageno);
 
   /// Resolve an object
+  /**
+  * If the object is a reference, it is resolved to the actual object.
+  * \param obj The object to resolve
+  * \return The resolved PDF object
+  */
   wxPdfObject* ResolveObject(wxPdfObject* obj);
 
   /// Set flag whether a stream should be decoded or not
+  /**
+  * \param useRawStream TRUE to skip decoding, FALSE to decode
+  */
   void SetUseRawStream(bool useRawStream) { m_useRawStream = useRawStream; }
 
   /// Get flag whether a stream should be decoded or not
+  /**
+  * \return TRUE if skip decoding, FALSE if decode
+  */
   bool GetUseRawStream() const { return m_useRawStream; }
 
 protected:
@@ -339,6 +497,10 @@ private:
 #define WXPDF_LZW_STRINGTABLE_SIZE 8192
 
 /// Class representing an LZW decoder. (For internal use only)
+/**
+* Decodes streams that use the Lempel-Ziv-Welch (LZW) compression algorithm,
+* commonly used in PDF and TIFF files.
+*/
 class WXDLLIMPEXP_PDFDOC wxPdfLzwDecoder
 {
 public:
@@ -348,19 +510,34 @@ public:
   /// Destructor
   virtual ~wxPdfLzwDecoder();
 
-  /// Get next code
+  /// Get next code from the encoded stream
+  /**
+  * \return The next LZW code
+  */
   int GetNextCode();
 
   /// Decode a byte stream
+  /**
+  * \param dataIn The encoded input stream
+  * \param dataOut The decoded output stream
+  * \return TRUE if successful, FALSE otherwise
+  */
   bool Decode(wxMemoryInputStream* dataIn, wxMemoryOutputStream* dataOut);
 
-  /// Initialize the string table
+  /// Initialize the string table with initial 256 entries
   void InitializeStringTable();
 
-  /// Write decoded string into output buffer
+  /// Write decoded string associated with code into output buffer
+  /**
+  * \param code The code to look up in the string table
+  */
   void WriteString(int code);
 
-  /// Add string to string table
+  /// Add a new string to the string table
+  /**
+  * \param oldCode The previous code
+  * \param newString The new character to append
+  */
   void AddStringToTable(int oldCode, char newString);
 
 private:

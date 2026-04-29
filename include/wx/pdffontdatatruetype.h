@@ -45,7 +45,7 @@ public:
   */
   virtual double GetStringWidth(const wxString& s, const wxPdfEncoding* encoding = NULL, bool withKerning = false, double charSpacing = 0) const;
 
-  /// Check whether the font oan show all characters of a given string
+  /// Check whether the font can show all characters of a given string
   /**
   * \param s the string to be checked
   * \param encoding the character to glyph mapping
@@ -144,9 +144,10 @@ public:
   * \param charSpacing extra amount of spacing between characters (optional)
   * \return the width of the string
   */
-  virtual double GetStringWidth(const wxString& s, const wxPdfEncoding* encoding = NULL, bool withKerning = false, double charSpacing = 0) const;
+  virtual double GetStringWidth(const wxString& s, const wxPdfEncoding* encoding = NULL,
+                                bool withKerning = false, double charSpacing = 0) const;
 
-  /// Check whether the font oan show all characters of a given string
+  /// Check whether the font can show all characters of a given string
   /**
   * \param s the string to be checked
   * \param encoding the character to glyph mapping
