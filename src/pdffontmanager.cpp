@@ -1159,9 +1159,14 @@ wxPdfFontManagerBase::GetFont(const wxString& fontName, int fontStyle) const
     wxPdfFontNameMap::const_iterator fontIter = m_fontNameMap.find(lcFontName);
     if (fontIter != m_fontNameMap.end())
     {
-      fontData = m_fontList[fontIter->second]->GetFontData();
+      wxPdfFontData* candidate = m_fontList[fontIter->second]->GetFontData();
+      // only accept if no specific style was requested or the candidate's style matches
+      if (searchStyle == wxPDF_FONTSTYLE_REGULAR || candidate->GetStyle() == searchStyle)
+      {
+        fontData = candidate;
+      }
     }
-    else
+    if (fontData == NULL)
     {
       wxString style = ConvertStyleToString(searchStyle);
       wxLogDebug(wxString(wxS("wxPdfFontManagerBase::GetFont: ")) +
