@@ -1791,7 +1791,7 @@ int
 wxPdfDCImpl::ScalePdfToFontMetric( double metric ) const
 {
   double fontScale = (72.0 / m_ppi) / (double)m_pdfDocument->GetScaleFactor();
-  return wxRound(((metric * m_signY) / m_scaleY ) / fontScale);
+  return wxRound((metric / m_scaleX) / fontScale);
 }
 
 void
