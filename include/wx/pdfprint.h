@@ -776,7 +776,7 @@ public:
 
   /// Show the dialog modally
   /**
-  * \return wxID_OK if successful, wxID_CANCEL otherwise
+  * \return @c wxID_OK if successful, @c wxID_CANCEL otherwise
   */
   virtual int ShowModal();
 
