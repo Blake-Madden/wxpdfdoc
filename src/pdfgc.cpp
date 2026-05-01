@@ -50,22 +50,9 @@
 
 #include <math.h>
 
-using namespace std;
-
 //-----------------------------------------------------------------------------
 // wxGraphicsPath implementation
 //-----------------------------------------------------------------------------
-
-// TODO remove this dependency (gdiplus needs the macros)
-// TODO really needed for wxPdfGraphicsContext?
-
-#ifndef max
-#define max(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
-
-#ifndef min
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
 
 class WXDLLIMPEXP_FWD_PDFDOC wxPdfGraphicsContext;
 
