@@ -22,6 +22,7 @@
 #include <wx/vector.h>
 
 #include "wx/pdfdocdef.h"
+#include "wx/pdfshape.h"
 
 class WXDLLIMPEXP_FWD_PDFDOC wxPdfDocument;
 class WXDLLIMPEXP_FWD_PDFDOC wxPdfDC;
@@ -64,6 +65,10 @@ public:
 
   virtual void Clip(const wxRegion& region) wxOVERRIDE;
   virtual void Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// PDF-specific clip that takes a native shape.
+  void Clip(const wxPdfShape& shape);
+
   virtual void ResetClip() wxOVERRIDE;
   virtual void GetClipBox(wxDouble* x, wxDouble* y, wxDouble* w, wxDouble* h) wxOVERRIDE;
 
@@ -174,6 +179,11 @@ private:
   // whenever either side changes.
   double         m_lineAlpha;
   double         m_fillAlpha;
+
+  // Track the number of q's emitted by Clip() calls within the current
+  // PushState/PopState level, so PopState can balance them with Q's.
+  int            m_clipCount;
+  wxVector<int>  m_clipCountStack;
 
   // Shadow of the document's current transformation matrix. PDF cannot
   // read its own CTM back, so we keep one here for GetTransform() and

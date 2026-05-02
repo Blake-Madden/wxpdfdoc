@@ -43,18 +43,19 @@
 #include <wx/font.h>
 #include <wx/paper.h>
 
-#include "wx/pdfgc.h" 
+#include "wx/pdfgc.h"
+#include "wx/pdfdoc_version.h"
 #include "wx/pdffontmanager.h"
 #include "wx/pdflinestyle.h"
 #include "wx/pdfshape.h"
 
+#include "wx/pdfdc.h"
+
 #include <math.h>
 
 //-----------------------------------------------------------------------------
-// wxGraphicsPath implementation
+// Private graphics-data subclasses
 //-----------------------------------------------------------------------------
-
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfGraphicsContext;
 
 class wxPdfGraphicsPathData : public wxGraphicsPathData
 {
@@ -89,22 +90,21 @@ public :
   // adds an arc of a circle centering at (x,y) with radius (r) from startAngle to endAngle
   virtual void AddArc(wxDouble x, wxDouble y, wxDouble r, wxDouble startAngle, wxDouble endAngle, bool clockwise);
 
+  // adds a quadratic Bezier curve from the current point, using a control point and an end point
+  virtual void AddQuadCurveToPoint(wxDouble cx, wxDouble cy, wxDouble x, wxDouble y);
+
+  // appends a rectangle as a new closed subpath
+  virtual void AddRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h);
+
+  // appends an ellipsis as a new closed subpath fitting the passed rectangle
+  virtual void AddCircle(wxDouble x, wxDouble y, wxDouble r);
+
   //
   // These are convenience functions which - if not available natively will be assembled
   // using the primitives from above
   //
 
   /*
-
-  // adds a quadratic Bezier curve from the current point, using a control point and an end point
-  virtual void AddQuadCurveToPoint(wxDouble cx, wxDouble cy, wxDouble x, wxDouble y);
-
-  // appends a rectangle as a new closed subpath
-  virtual void AddRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-    
-  // appends an ellipsis as a new closed subpath fitting the passed rectangle
-  virtual void AddCircle(wxDouble x, wxDouble y, wxDouble r);
-
   // draws a an arc to two tangents connecting (current) to (x1,y1) and (x1,y1) to (x2,y2), also a straight line from (current) to (x1,y1)
   virtual void AddArcToPoint(wxDouble x1, wxDouble y1 , wxDouble x2, wxDouble y2, wxDouble r);
 
@@ -133,7 +133,27 @@ public :
   const wxPdfShape& GetPdfShape() const { return m_path; }
 
 private:
+  // Update m_currentX/Y and the bounding box with a single point.
+  void RecordPoint(double x, double y);
+  // Update the bounding box only (used for control points).
+  void RecordExtent(double x, double y);
+
   wxPdfShape m_path;
+
+  // Tracked current point and bounding box. wxPdfShape doesn't expose these
+  // so we maintain them ourselves; matches wxCairoPathData / wxGDIPlusPath.
+  bool   m_hasCurrent;
+  double m_currentX;
+  double m_currentY;
+  // Last MoveTo, used to restore the current point after CloseSubpath.
+  double m_subpathStartX;
+  double m_subpathStartY;
+
+  bool   m_hasBox;
+  double m_minX;
+  double m_minY;
+  double m_maxX;
+  double m_maxY;
 };
 
 class WXDLLIMPEXP_PDFDOC wxPdfGraphicsMatrixData : public wxGraphicsMatrixData
@@ -205,7 +225,7 @@ public:
 protected:
   // Call this to use the given bitmap as stipple. Bitmap must be non-null
   // and valid.
-  void InitStipple(wxBitmap* bmp);
+  void InitStipple(const wxBitmap& bmp);
 
   // Call this to use the given hatch style. Hatch style must be valid.
   void InitHatch(wxHatchStyle hatchStyle);
@@ -226,7 +246,7 @@ private:
 class wxPdfGraphicsPenData : public wxPdfGraphicsPenBrushData
 {
 public:
-  wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const wxPen&pen);
+  wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const wxGraphicsPenInfo& info);
   ~wxPdfGraphicsPenData();
 
   void Init();
@@ -237,7 +257,7 @@ public:
 private :
   double m_width;
 
-  wxPdfLineStyle m_cap;
+  wxPdfLineCap   m_cap;
   wxPdfLineJoin  m_join;
 
   int           m_count;
@@ -250,8 +270,12 @@ private :
 class wxPdfGraphicsBrushData : public wxPdfGraphicsPenBrushData
 {
 public:
+  enum GradientKind { GRAD_NONE, GRAD_LINEAR, GRAD_RADIAL };
+
   wxPdfGraphicsBrushData(wxGraphicsRenderer* renderer);
   wxPdfGraphicsBrushData(wxGraphicsRenderer* renderer, const wxBrush& brush);
+
+  virtual void Apply(wxPdfGraphicsContext* context) wxOVERRIDE;
 
   void CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
                                  wxDouble x2, wxDouble y2,
@@ -260,11 +284,27 @@ public:
                                  wxDouble xc, wxDouble yc, wxDouble radius,
                                  const wxGraphicsGradientStops& stops);
 
+  // Public accessors used by FillPath() to render gradients.
+  GradientKind GetGradientKind() const { return m_gradientKind; }
+  bool HasGradient() const { return m_gradientKind != GRAD_NONE; }
+  double GetGradX1() const { return m_gradX1; }
+  double GetGradY1() const { return m_gradY1; }
+  double GetGradX2() const { return m_gradX2; }
+  double GetGradY2() const { return m_gradY2; }
+  double GetGradRadius() const { return m_gradRadius; }
+  const wxGraphicsGradientStops& GetStops() const { return m_gradStops; }
+  const wxColour& GetColour() const { return m_colour; }
+
 protected:
   virtual void Init();
 
   // common part of Create{Linear,Radial}GradientBrush()
   void AddGradientStops(const wxGraphicsGradientStops& stops);
+
+  GradientKind             m_gradientKind;
+  double                   m_gradX1, m_gradY1, m_gradX2, m_gradY2;
+  double                   m_gradRadius;
+  wxGraphicsGradientStops  m_gradStops;
 };
 
 class wxPdfGraphicsFontData : public wxGraphicsObjectRefData
@@ -303,192 +343,20 @@ public:
 #endif // wxUSE_IMAGE
   ~wxPdfGraphicsBitmapData();
 
-  virtual void* GetNativeBitmap() const { return NULL /*m_surface*/; }
-  virtual wxSize GetSize() { return wxSize(m_width, m_height); }
+  virtual void* GetNativeBitmap() const wxOVERRIDE { return NULL; }
+  // wxGraphicsBitmapData has no virtual GetSize; this is just a helper
+  // for our internal use.
+  wxSize GetSize() { return wxSize(m_image.GetWidth(), m_image.GetHeight()); }
 
 #if wxUSE_IMAGE
-  wxImage ConvertToImage() const;
+  wxImage ConvertToImage() const { return m_image; }
 #endif // wxUSE_IMAGE
 
-private :
-#if 0
-  // Allocate m_buffer for the bitmap of the given size in the given format.
-  //
-  // Returns the stride used for the buffer.
-  int InitBuffer(int width, int height, cairo_format_t format);
-
-  // Really create the surface using the buffer (which was supposed to be
-  // filled since InitBuffer() call).
-  void InitSurface(cairo_format_t format, int stride);
-
-  cairo_surface_t* m_surface;
-  cairo_pattern_t* m_pattern;
-#endif
-  int m_width;
-  int m_height;
-  unsigned char* m_buffer;
-};
-
-class WXDLLIMPEXP_PDFDOC wxPdfGraphicsContext : public wxGraphicsContext
-{
-public:
-  wxPdfGraphicsContext(wxGraphicsRenderer* renderer, const wxPrintData& data);
-  wxPdfGraphicsContext(wxGraphicsRenderer* renderer, wxPdfDocument* pdfDocument, double templateWidth, double templateHeight);
-  wxPdfGraphicsContext(wxGraphicsRenderer* renderer);
-
-  virtual ~wxPdfGraphicsContext();
-
-  // begin a new document (relevant only for printing / pdf etc) if there is a progress dialog, message will be shown
-  virtual bool StartDoc(const wxString& message);
-
-  // done with that document (relevant only for printing / pdf etc)
-  virtual void EndDoc();
-
-  // opens a new page  (relevant only for printing / pdf etc) with the given size in points
-  // (if both are null the default page size will be used)
-  virtual void StartPage(wxDouble width = 0, wxDouble height = 0);
-
-  // ends the current page  (relevant only for printing / pdf etc)
-  virtual void EndPage();
-
-  virtual void PushState();
-  virtual void PopState();
-
-  virtual void Clip(const wxRegion &region);
-
-  // clips drawings to the rect
-  virtual void Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-
-  // resets the clipping to original extent
-  virtual void ResetClip();
-
-  virtual void* GetNativeContext();
-
-  virtual bool SetAntialiasMode(wxAntialiasMode antialias);
-
-  virtual bool SetInterpolationQuality(wxInterpolationQuality interpolation);
-
-  virtual bool SetCompositionMode(wxCompositionMode op);
-
-  // returns the resolution of the graphics context in device points per inch
-  // TODO: required?
-  virtual void GetDPI( wxDouble* dpiX, wxDouble* dpiY);
-    
-  virtual void BeginLayer(wxDouble opacity);
-
-  virtual void EndLayer();
-
-  virtual void Translate(wxDouble dx , wxDouble dy);
-  virtual void Scale(wxDouble xScale , wxDouble yScale);
-  virtual void Rotate(wxDouble angle);
-
-  // concatenates this transform with the current transform of this context
-  virtual void ConcatTransform(const wxGraphicsMatrix& matrix);
-
-  // sets the transform of this context
-  virtual void SetTransform(const wxGraphicsMatrix& matrix);
-
-  // gets the matrix of this context
-  virtual wxGraphicsMatrix GetTransform() const;
-
-  // sets the pen
-  virtual void SetPen( const wxGraphicsPen& pen );
-
-  // sets the brush for filling
-  virtual void SetBrush( const wxGraphicsBrush& brush );
-
-  // sets the font
-  virtual void SetFont( const wxGraphicsFont& font );
-
-  virtual void StrokePath(const wxGraphicsPath& p);
-  virtual void FillPath(const wxGraphicsPath& p, wxPolygonFillMode fillStyle = wxWINDING_RULE);
-
-  // draws a path by first filling and then stroking
-  virtual void DrawPath(const wxGraphicsPath& path, wxPolygonFillMode fillStyle = wxODDEVEN_RULE);
-
-  virtual void GetTextExtent(const wxString& str, wxDouble* width, wxDouble* height,
-                             wxDouble* descent, wxDouble*externalLeading) const;
-  virtual void GetPartialTextExtents(const wxString& text, wxArrayDouble& widths) const;
-
-  virtual void DrawBitmap(const wxGraphicsBitmap& bmp, wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-  virtual void DrawBitmap(const wxBitmap& bmp, wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-  virtual void DrawIcon(const wxIcon& icon, wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-
-//TODO Begin
-  // strokes a single line
-  virtual void StrokeLine(wxDouble x1, wxDouble y1, wxDouble x2, wxDouble y2);
-
-  // stroke lines connecting each of the points
-  virtual void StrokeLines(size_t n, const wxPoint2DDouble* points);
-
-  // stroke disconnected lines from begin to end points
-  virtual void StrokeLines(size_t n, const wxPoint2DDouble* beginPoints, const wxPoint2DDouble* endPoints);
-
-  // draws a polygon
-  virtual void DrawLines(size_t n, const wxPoint2DDouble* points, wxPolygonFillMode fillStyle = wxODDEVEN_RULE);
-
-  // draws a rectangle
-  virtual void DrawRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-
-  // draws an ellipse
-  virtual void DrawEllipse(wxDouble x, wxDouble y, wxDouble w, wxDouble h);
-
-  // draws a rounded rectangle
-  virtual void DrawRoundedRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h, wxDouble radius);
-//TODO End
-
-  virtual bool ShouldOffset() const
-  {
-    if (!m_enableOffset)
-      return false;
-        
-    int penwidth = 0 ;
-    if (!m_pen.IsNull())
-    {
-      penwidth = (int)((wxPdfGraphicsPenData*)m_pen.GetRefData())->GetWidth();
-      if ( penwidth == 0 )
-        penwidth = 1;
-    }
-    return ( penwidth % 2 ) == 1;
-  }
-
-  wxPdfDocument* GetPdfDocument() { return m_pdfDocument; }
-
-protected:
-    virtual void DoDrawText( const wxString &str, wxDouble x, wxDouble y );
-
-#if 0
-  virtual void DoDrawRotatedText(const wxString& str, wxDouble x, wxDouble y,
-                                 wxDouble angle);
-  virtual void DoDrawFilledText(const wxString& str, wxDouble x, wxDouble y,
-                                const wxGraphicsBrush& backgroundBrush);
-  virtual void DoDrawRotatedFilledText(const wxString& str,
-                                       wxDouble x, wxDouble y,
-                                       wxDouble angle,
-                                       const wxGraphicsBrush& backgroundBrush);
-#endif
-
-  void Init();
-  void SetPrintData(const wxPrintData& data);
-
-  void CalculateFontMetrics(wxPdfFontDescription* desc, double pointSize,
-                            double* height, double* ascent, 
-                            double* descent, double* extLeading) const;
+  // Direct access for the context's DrawBitmap() implementation.
+  const wxImage& GetImage() const { return m_image; }
 
 private:
-  bool           m_templateMode;
-  double         m_templateWidth;
-  double         m_templateHeight;
-  double         m_ppi;
-  double         m_ppiPdfFont;
-  wxPdfDocument* m_pdfDocument;
-  int            m_imageCount;
-  wxPrintData    m_printData;
-  wxPdfMapModeStyle m_mappingModeStyle;
-
-  wxVector<float> m_layerOpacities;
-
-  wxDECLARE_NO_COPY_CLASS(wxPdfGraphicsContext);
+  wxImage m_image;
 };
 
 // ----------------------------------------------------------------------------
@@ -595,14 +463,10 @@ wxPdfGraphicsPenBrushData::InitHatchPattern()
 }
 
 void
-wxPdfGraphicsPenBrushData::InitStipple(wxBitmap* bmp)
+wxPdfGraphicsPenBrushData::InitStipple(const wxBitmap& WXUNUSED(bmp))
 {
-#if 0
-  wxCHECK_RET(bmp && bmp->IsOk(), wxS("Invalid stippled bitmap"));
-  m_bmpdata = new wxPdfGraphicsBitmapData(GetRenderer(), *bmp);
-  m_pattern = m_bmpdata->GetCairoPattern();
-  cairo_pattern_set_extend(m_pattern, CAIRO_EXTEND_REPEAT);
-#endif
+  // TODO: route stipple through wxPdfPattern. Currently a no-op so that
+  // pens / brushes with stipple styles still construct successfully.
 }
 
 void
@@ -614,25 +478,12 @@ wxPdfGraphicsPenBrushData::InitHatch(wxHatchStyle hatchStyle)
 }
 
 void
-wxPdfGraphicsPenBrushData::Apply(wxPdfGraphicsContext* context)
+wxPdfGraphicsPenBrushData::Apply(wxPdfGraphicsContext* WXUNUSED(context))
 {
-#if 0
-  cairo_t* const ctext = (cairo_t*) context->GetNativeContext();
-
-  if (m_hatchStyle != wxHATCHSTYLE_INVALID && !m_pattern)
-  {
-    InitHatchPattern(ctext);
-  }
-
-  if (m_pattern)
-  {
-    cairo_set_source(ctext, m_pattern);
-  }
-  else
-  {
-    cairo_set_source_rgba(ctext, m_red, m_green, m_blue, m_alpha);
-  }
-#endif
+  // Nothing to do at this layer — wxPdfGraphicsPenData::Apply and
+  // wxPdfGraphicsBrushData::Apply own colour/alpha state because the
+  // PDF document distinguishes draw colour from fill colour.
+  // Hatch / stipple patterns are TODO (would route through wxPdfPattern).
 }
 
 //-----------------------------------------------------------------------------
@@ -653,17 +504,19 @@ wxPdfGraphicsPenData::Init()
   m_count = 0;
 }
 
-wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const wxPen &pen )
-  : wxPdfGraphicsPenBrushData(renderer, pen.GetColour(), pen.IsTransparent())
+wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer,
+                                           const wxGraphicsPenInfo& info)
+  : wxPdfGraphicsPenBrushData(renderer, info.GetColour(),
+                              info.GetStyle() == wxPENSTYLE_TRANSPARENT)
 {
   Init();
-  m_width = pen.GetWidth();
+  m_width = info.GetWidth();
   if (m_width <= 0.0)
   {
     m_width = 0.1;
   }
 
-  switch (pen.GetCap())
+  switch (info.GetCap())
   {
     case wxCAP_ROUND:
       m_cap = wxPDF_LINECAP_ROUND;
@@ -682,7 +535,7 @@ wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const w
       break;
   }
 
-  switch (pen.GetJoin())
+  switch (info.GetJoin())
   {
     case wxJOIN_BEVEL:
       m_join = wxPDF_LINEJOIN_BEVEL;
@@ -719,7 +572,7 @@ wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const w
     9.0 , 6.0 , 3.0 , 3.0
   };
 
-  switch (pen.GetStyle())
+  switch (info.GetStyle())
   {
     case wxPENSTYLE_SOLID:
       break;
@@ -748,8 +601,8 @@ wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const w
 
     case wxPENSTYLE_USER_DASH:
       {
-        wxDash* wxdashes ;
-        m_count = pen.GetDashes(&wxdashes) ;
+        wxDash* wxdashes;
+        m_count = info.GetDashes(&wxdashes);
         if ((wxdashes != NULL) && (m_count > 0))
         {
           m_userLengths = new double[m_count];
@@ -772,14 +625,14 @@ wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const w
     case wxPENSTYLE_STIPPLE :
     case wxPENSTYLE_STIPPLE_MASK :
     case wxPENSTYLE_STIPPLE_MASK_OPAQUE :
-      InitStipple(pen.GetStipple());
+      InitStipple(info.GetStipple());
       break;
 
     default :
-      if (pen.GetStyle() >= wxPENSTYLE_FIRST_HATCH &&
-          pen.GetStyle() <= wxPENSTYLE_LAST_HATCH)
+      if (info.GetStyle() >= wxPENSTYLE_FIRST_HATCH &&
+          info.GetStyle() <= wxPENSTYLE_LAST_HATCH)
       {
-        InitHatch(static_cast<wxHatchStyle>(pen.GetStyle()));
+        InitHatch(static_cast<wxHatchStyle>(info.GetStyle()));
       }
       break;
   }
@@ -788,15 +641,28 @@ wxPdfGraphicsPenData::wxPdfGraphicsPenData(wxGraphicsRenderer* renderer, const w
 void
 wxPdfGraphicsPenData::Apply(wxPdfGraphicsContext* context)
 {
-#if 0
   wxPdfGraphicsPenBrushData::Apply(context);
 
-  cairo_t * ctext = (cairo_t*) context->GetNativeContext();
-  cairo_set_line_width(ctext,m_width);
-  cairo_set_line_cap(ctext,m_cap);
-  cairo_set_line_join(ctext,m_join);
-  cairo_set_dash(ctext,(double*)m_lengths,m_count,0.0);
-#endif
+  wxPdfDocument* doc = context->GetPdfDocument();
+  if (!doc)
+  {
+    return;
+  }
+
+  // Build a wxPdfLineStyle that captures everything in one go:
+  // colour, width, cap, join, dash array.
+  wxPdfArrayDouble dash;
+  for (int i = 0; i < m_count; ++i)
+  {
+    dash.Add(m_lengths[i]);
+  }
+
+  wxPdfColour pdfCol(m_colour.Red(), m_colour.Green(), m_colour.Blue());
+  wxPdfLineStyle style(m_width, m_cap, m_join, dash, 0.0, pdfCol);
+  doc->SetLineStyle(style);
+  doc->SetDrawColour(m_colour.Red(), m_colour.Green(), m_colour.Blue());
+
+  context->SetLineAlpha(m_colour.Alpha() / 255.0);
 }
 
 //-----------------------------------------------------------------------------
@@ -820,7 +686,7 @@ wxPdfGraphicsBrushData::wxPdfGraphicsBrushData(wxGraphicsRenderer* renderer,
     case wxBRUSHSTYLE_STIPPLE:
     case wxBRUSHSTYLE_STIPPLE_MASK:
     case wxBRUSHSTYLE_STIPPLE_MASK_OPAQUE:
-      InitStipple(brush.GetStipple());
+      InitStipple(*brush.GetStipple());
       break;
 
     default:
@@ -835,26 +701,9 @@ wxPdfGraphicsBrushData::wxPdfGraphicsBrushData(wxGraphicsRenderer* renderer,
 void
 wxPdfGraphicsBrushData::AddGradientStops(const wxGraphicsGradientStops& stops)
 {
-#if 0
-  // loop over all the stops, they include the beginning and ending ones
-  const unsigned numStops = stops.GetCount();
-  for (unsigned n = 0; n < numStops; n++)
-  {
-    const wxGraphicsGradientStop stop = stops.Item(n);
-
-    const wxColour col = stop.GetColour();
-
-    cairo_pattern_add_color_stop_rgba(m_pattern,
-                                      stop.GetPosition(),
-                                      col.Red() / 255.0,
-                                      col.Green() / 255.0,
-                                      col.Blue() / 255.0,
-                                      col.Alpha() / 255.0);
-  }
-
-  wxASSERT_MSG(cairo_pattern_status(m_pattern) == CAIRO_STATUS_SUCCESS,
-               wxT("Couldn't create cairo pattern"));
-#endif
+  // Stops are stored verbatim; the actual PDF shading is materialised by
+  // Apply() once a document is available.
+  m_gradStops = stops;
 }
 
 void
@@ -862,11 +711,10 @@ wxPdfGraphicsBrushData::CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
                                                   wxDouble x2, wxDouble y2,
                                                   const wxGraphicsGradientStops& stops)
 {
-#if 0
-  m_pattern = cairo_pattern_create_linear(x1,y1,x2,y2);
-
+  m_gradientKind = GRAD_LINEAR;
+  m_gradX1 = x1; m_gradY1 = y1;
+  m_gradX2 = x2; m_gradY2 = y2;
   AddGradientStops(stops);
-#endif
 }
 
 void
@@ -875,18 +723,51 @@ wxPdfGraphicsBrushData::CreateRadialGradientBrush(wxDouble xo, wxDouble yo,
                                                   wxDouble radius,
                                                   const wxGraphicsGradientStops& stops)
 {
-#if 0
-  m_pattern = cairo_pattern_create_radial(xo,yo,0.0,xc,yc,radius);
-
+  m_gradientKind = GRAD_RADIAL;
+  m_gradX1 = xo; m_gradY1 = yo;
+  m_gradX2 = xc; m_gradY2 = yc;
+  m_gradRadius = radius;
   AddGradientStops(stops);
-#endif
+}
+
+void
+wxPdfGraphicsBrushData::Apply(wxPdfGraphicsContext* context)
+{
+  wxPdfGraphicsPenBrushData::Apply(context);
+
+  wxPdfDocument* doc = context->GetPdfDocument();
+  if (!doc)
+  {
+    return;
+  }
+
+  // Solid colour path.
+  if (m_gradientKind == GRAD_NONE)
+  {
+    doc->SetFillColour(m_colour.Red(), m_colour.Green(), m_colour.Blue());
+    context->SetFillAlpha(m_colour.Alpha() / 255.0);
+  }
+  else
+  {
+    // Gradient is configured but the registration logic lives elsewhere.
+    // For now fall back to the first stop colour so brushes still produce
+    // visible output instead of nothing.
+    if (m_gradStops.GetCount() > 0)
+    {
+      const wxColour c = m_gradStops.GetStartColour();
+      doc->SetFillColour(c.Red(), c.Green(), c.Blue());
+      context->SetFillAlpha(c.Alpha() / 255.0);
+    }
+  }
 }
 
 void
 wxPdfGraphicsBrushData::Init()
 {
-//  m_pattern = NULL;
   m_bmpdata = NULL;
+  m_gradientKind = GRAD_NONE;
+  m_gradX1 = m_gradY1 = m_gradX2 = m_gradY2 = 0.0;
+  m_gradRadius = 0.0;
 }
 
 //-----------------------------------------------------------------------------
@@ -982,7 +863,7 @@ bool
 wxPdfGraphicsFontData::Apply(wxPdfGraphicsContext* context)
 {
   wxPdfDocument* pdfDocument = context->GetPdfDocument();
-  bool ok = m_regFont.IsValid() && pdfDocument != NULL;
+  const bool ok = m_regFont.IsValid() && pdfDocument != NULL;
   if (ok)
   {
     pdfDocument->SetTextColour(m_colour.Red(), m_colour.Green(), m_colour.Blue());
@@ -997,10 +878,51 @@ wxPdfGraphicsFontData::Apply(wxPdfGraphicsContext* context)
 
 wxPdfGraphicsPathData::wxPdfGraphicsPathData(wxGraphicsRenderer* renderer, const wxPdfShape* path)
   : wxGraphicsPathData(renderer)
+  , m_hasCurrent(false)
+  , m_currentX(0.0)
+  , m_currentY(0.0)
+  , m_subpathStartX(0.0)
+  , m_subpathStartY(0.0)
+  , m_hasBox(false)
+  , m_minX(0.0)
+  , m_minY(0.0)
+  , m_maxX(0.0)
+  , m_maxY(0.0)
 {
   if (path)
   {
-    m_path = *path;
+    // Replay the source path through our own setters so we recover the
+    // current point and bounding box that wxPdfShape doesn't track.
+    const unsigned int n = path->GetSegmentCount();
+    int iterPoints = 0;
+    double coords[8];
+    for (unsigned int i = 0; i < n; ++i)
+    {
+      wxPdfSegmentType seg = path->GetSegment(i, iterPoints, coords);
+      switch (seg)
+      {
+        case wxPDF_SEG_MOVETO:
+          MoveToPoint(coords[0], coords[1]);
+          iterPoints += 1;
+          break;
+        case wxPDF_SEG_LINETO:
+          AddLineToPoint(coords[0], coords[1]);
+          iterPoints += 1;
+          break;
+        case wxPDF_SEG_CURVETO:
+          AddCurveToPoint(coords[0], coords[1],
+                          coords[2], coords[3],
+                          coords[4], coords[5]);
+          iterPoints += 3;
+          break;
+        case wxPDF_SEG_CLOSE:
+          CloseSubpath();
+          iterPoints += 1;
+          break;
+        default:
+          break;
+      }
+    }
   }
 }
 
@@ -1021,8 +943,35 @@ wxPdfGraphicsPathData::GetNativePath() const
 }
 
 void
-wxPdfGraphicsPathData::UnGetNativePath(void* p) const
+wxPdfGraphicsPathData::UnGetNativePath(void* WXUNUSED(p)) const
 {
+}
+
+void
+wxPdfGraphicsPathData::RecordPoint(double x, double y)
+{
+  m_currentX = x;
+  m_currentY = y;
+  m_hasCurrent = true;
+  RecordExtent(x, y);
+}
+
+void
+wxPdfGraphicsPathData::RecordExtent(double x, double y)
+{
+  if (!m_hasBox)
+  {
+    m_minX = m_maxX = x;
+    m_minY = m_maxY = y;
+    m_hasBox = true;
+  }
+  else
+  {
+    if (x < m_minX) m_minX = x;
+    if (x > m_maxX) m_maxX = x;
+    if (y < m_minY) m_minY = y;
+    if (y > m_maxY) m_maxY = y;
+  }
 }
 
 //
@@ -1030,139 +979,172 @@ wxPdfGraphicsPathData::UnGetNativePath(void* p) const
 //
 
 void
-wxPdfGraphicsPathData::MoveToPoint(wxDouble x , wxDouble y)
+wxPdfGraphicsPathData::MoveToPoint(wxDouble x, wxDouble y)
 {
   m_path.MoveTo(x, y);
+  m_subpathStartX = x;
+  m_subpathStartY = y;
+  RecordPoint(x, y);
 }
 
 void
 wxPdfGraphicsPathData::AddLineToPoint(wxDouble x, wxDouble y)
 {
   m_path.LineTo(x, y);
+  RecordPoint(x, y);
 }
 
 void
 wxPdfGraphicsPathData::AddPath(const wxGraphicsPathData* path)
 {
-  wxPdfShape* p = (wxPdfShape*) path->GetNativePath();
-  m_path.AddPath(*p);
-  UnGetNativePath(p);
+  // Walk the source segments and replay them on top of the current path.
+  // wxPdfShape exposes GetSegment but not a direct AddPath, so this
+  // synthesises one without modifying wxPdfShape.
+  const wxPdfShape* src =
+    static_cast<const wxPdfShape*>(path->GetNativePath());
+  if (!src)
+  {
+    return;
+  }
+
+  const unsigned int n = src->GetSegmentCount();
+  int iterPoints = 0;
+  double coords[8];
+  for (unsigned int i = 0; i < n; ++i)
+  {
+    wxPdfSegmentType seg = src->GetSegment(i, iterPoints, coords);
+    switch (seg)
+    {
+      case wxPDF_SEG_MOVETO:
+        MoveToPoint(coords[0], coords[1]);
+        iterPoints += 1;
+        break;
+      case wxPDF_SEG_LINETO:
+        AddLineToPoint(coords[0], coords[1]);
+        iterPoints += 1;
+        break;
+      case wxPDF_SEG_CURVETO:
+        AddCurveToPoint(coords[0], coords[1],
+                        coords[2], coords[3],
+                        coords[4], coords[5]);
+        iterPoints += 3;
+        break;
+      case wxPDF_SEG_CLOSE:
+        CloseSubpath();
+        iterPoints += 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  path->UnGetNativePath(const_cast<wxPdfShape*>(src));
 }
 
 void
 wxPdfGraphicsPathData::CloseSubpath()
 {
   m_path.ClosePath();
+  // PDF closepath returns the current point to the start of the subpath.
+  m_currentX = m_subpathStartX;
+  m_currentY = m_subpathStartY;
 }
 
 void
 wxPdfGraphicsPathData::AddCurveToPoint(wxDouble cx1, wxDouble cy1, wxDouble cx2, wxDouble cy2, wxDouble x, wxDouble y)
 {
   m_path.CurveTo(cx1, cy1, cx2, cy2, x, y);
+  RecordExtent(cx1, cy1);
+  RecordExtent(cx2, cy2);
+  RecordPoint(x, y);
 }
 
-// gets the last point of the current path, (0,0) if not yet set
 void
 wxPdfGraphicsPathData::GetCurrentPoint(wxDouble* x, wxDouble* y) const
 {
-  double dx,dy;
-  m_path.GetCurrentPoint(&dx,&dy);
-  if (x) *x = dx;
-  if (y) *y = dy;
+  if (x) *x = m_hasCurrent ? m_currentX : 0.0;
+  if (y) *y = m_hasCurrent ? m_currentY : 0.0;
+}
+
+void
+wxPdfGraphicsPathData::AddQuadCurveToPoint(wxDouble cx, wxDouble cy, wxDouble x, wxDouble y)
+{
+  // Quadratic Bezier (P0, P1, P2) converted to Cubic (P0, C1, C2, P3):
+  // C1 = P0 + 2/3 * (P1 - P0)
+  // C2 = P2 + 2/3 * (P1 - P2)
+  double x0, y0;
+  GetCurrentPoint(&x0, &y0);
+  double cx1 = x0 + 2.0 / 3.0 * (cx - x0);
+  double cy1 = y0 + 2.0 / 3.0 * (cy - y0);
+  double cx2 = x + 2.0 / 3.0 * (cx - x);
+  double cy2 = y + 2.0 / 3.0 * (cy - y);
+  AddCurveToPoint(cx1, cy1, cx2, cy2, x, y);
+}
+
+void
+wxPdfGraphicsPathData::AddRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h)
+{
+  MoveToPoint(x, y);
+  AddLineToPoint(x + w, y);
+  AddLineToPoint(x + w, y + h);
+  AddLineToPoint(x, y + h);
+  CloseSubpath();
+}
+
+void
+wxPdfGraphicsPathData::AddCircle(wxDouble x, wxDouble y, wxDouble r)
+{
+  AddArc(x, y, r, 0, 2.0 * M_PI, true);
+  CloseSubpath();
 }
 
 void
 wxPdfGraphicsPathData::AddArc(wxDouble x, wxDouble y, wxDouble r, double startAngle, double endAngle, bool clockwise)
 {
-  static double pi = 4. * atan(1.);
-  static double pi2 = 0.5 * pi;
-  double xc = x;
-  double yc = y;
-  double astart = startAngle;
-  double afinish = endAngle;
-  double origin = 0;
-  double d;
-#if 0  
+  double sweep = endAngle - startAngle;
   if (clockwise)
   {
-    d = afinish;
-    afinish = origin - astart;
-    astart = origin - d;
+    if (sweep <= 0) sweep += 2.0 * M_PI;
   }
   else
   {
-    afinish += origin;
-    astart += origin;
-  }
-  astart = fmod(astart, 360.) + 360;
-  afinish = fmod(afinish, 360.) + 360;
-  if (astart > afinish)
-  {
-    afinish += 360;
-  }
-  afinish = afinish / 180. * pi;
-  astart = astart / 180. * pi;
-#endif  
-  d = afinish - astart;
-  if (d == 0)
-  {
-    d = 2 * pi;
-  }
-  
-  double myArc;
-  if (sin(d/2) != 0.0)
-  {
-    myArc = 4./3. * (1.-cos(d/2))/sin(d/2) * r;
-  }
-  else
-  {
-    myArc = 0.0;
+    if (sweep >= 0) sweep -= 2.0 * M_PI;
   }
 
-  // add the arc
-  if (d < pi2)
+  // If there is already a current point, add a line to the start of the arc.
+  // If not, move to the start of the arc.
+  const double startX = x + r * cos(startAngle);
+  const double startY = y + r * sin(startAngle);
+  if (!m_hasCurrent)
   {
-    m_path.CurveTo(xc+r*cos(astart)+myArc*cos(pi2+astart),
-                   yc-r*sin(astart)-myArc*sin(pi2+astart),
-                   xc+r*cos(afinish)+myArc*cos(afinish-pi2),
-                   yc-r*sin(afinish)-myArc*sin(afinish-pi2),
-                   xc+r*cos(afinish),
-                   yc-r*sin(afinish));
+    MoveToPoint(startX, startY);
   }
   else
   {
-    afinish = astart + d/4;
-    myArc = 4./3. * (1.-cos(d/8))/sin(d/8) * r;
-    m_path.CurveTo(xc+r*cos(astart)+myArc*cos(pi2+astart),
-                   yc-r*sin(astart)-myArc*sin(pi2+astart),
-                   xc+r*cos(afinish)+myArc*cos(afinish-pi2),
-                   yc-r*sin(afinish)-myArc*sin(afinish-pi2),
-                   xc+r*cos(afinish),
-                   yc-r*sin(afinish));
-    astart = afinish;
-    afinish = astart + d/4;
-    m_path.CurveTo(xc+r*cos(astart)+myArc*cos(pi2+astart),
-                   yc-r*sin(astart)-myArc*sin(pi2+astart),
-                   xc+r*cos(afinish)+myArc*cos(afinish-pi2),
-                   yc-r*sin(afinish)-myArc*sin(afinish-pi2),
-                   xc+r*cos(afinish),
-                   yc-r*sin(afinish));
-    astart = afinish;
-    afinish = astart + d/4;
-    m_path.CurveTo(xc+r*cos(astart)+myArc*cos(pi2+astart),
-                   yc-r*sin(astart)-myArc*sin(pi2+astart),
-                   xc+r*cos(afinish)+myArc*cos(afinish-pi2),
-                   yc-r*sin(afinish)-myArc*sin(afinish-pi2),
-                   xc+r*cos(afinish),
-                   yc-r*sin(afinish));
-    astart = afinish;
-    afinish = astart + d/4;
-    m_path.CurveTo(xc+r*cos(astart)+myArc*cos(pi2+astart),
-                   yc-r*sin(astart)-myArc*sin(pi2+astart),
-                   xc+r*cos(afinish)+myArc*cos(afinish-pi2),
-                   yc-r*sin(afinish)-myArc*sin(afinish-pi2),
-                   xc+r*cos(afinish),
-                   yc-r*sin(afinish));
+    AddLineToPoint(startX, startY);
+  }
+
+  // Split into 90-degree segments
+  int n = ceil(abs(sweep) / (M_PI / 2.0));
+  if (n < 1) n = 1;
+  double delta = sweep / n;
+  double currentAngle = startAngle;
+
+  for (int i = 0; i < n; ++i)
+  {
+    double nextAngle = currentAngle + delta;
+    double alpha = sin(delta) * (sqrt(4.0 + 3.0 * pow(tan(delta / 2.0), 2)) - 1.0) / 3.0;
+
+    // Control points for Y-down coordinates
+    double cx1 = x + r * (cos(currentAngle) - alpha * sin(currentAngle));
+    double cy1 = y + r * (sin(currentAngle) + alpha * cos(currentAngle));
+    double cx2 = x + r * (cos(nextAngle) + alpha * sin(nextAngle));
+    double cy2 = y + r * (sin(nextAngle) - alpha * cos(nextAngle));
+    double ex = x + r * cos(nextAngle);
+    double ey = y + r * sin(nextAngle);
+
+    AddCurveToPoint(cx1, cy1, cx2, cy2, ex, ey);
+    currentAngle = nextAngle;
   }
 }
 
@@ -1170,40 +1152,75 @@ wxPdfGraphicsPathData::AddArc(wxDouble x, wxDouble y, wxDouble r, double startAn
 void
 wxPdfGraphicsPathData::Transform(const wxGraphicsMatrixData* matrix)
 {
-  // as we don't have a true path object, we have to apply the inverse
-  // matrix to the context
-  wxAffineMatrix2D m = *((wxAffineMatrix2D*) matrix->GetNativeMatrix());
-  m.Invert();
-  m_path.Transform(m);
+  // wxPdfShape has no in-place transform; rebuild it segment-by-segment.
+  // The matrix is applied forward (the previous code inverted it, which
+  // was a bug).
+  const wxAffineMatrix2D& m =
+    *static_cast<const wxAffineMatrix2D*>(matrix->GetNativeMatrix());
+
+  wxPdfShape oldPath = m_path;
+  wxPdfShape rebuilt;
+  m_path = rebuilt;
+  m_hasCurrent = false;
+  m_hasBox = false;
+
+  const unsigned int n = oldPath.GetSegmentCount();
+  int iterPoints = 0;
+  double coords[8];
+  for (unsigned int i = 0; i < n; ++i)
+  {
+    wxPdfSegmentType seg = oldPath.GetSegment(i, iterPoints, coords);
+    switch (seg)
+    {
+      case wxPDF_SEG_MOVETO:
+      {
+        wxPoint2DDouble p = m.TransformPoint(wxPoint2DDouble(coords[0], coords[1]));
+        MoveToPoint(p.m_x, p.m_y);
+        iterPoints += 1;
+        break;
+      }
+      case wxPDF_SEG_LINETO:
+      {
+        wxPoint2DDouble p = m.TransformPoint(wxPoint2DDouble(coords[0], coords[1]));
+        AddLineToPoint(p.m_x, p.m_y);
+        iterPoints += 1;
+        break;
+      }
+      case wxPDF_SEG_CURVETO:
+      {
+        wxPoint2DDouble c1 = m.TransformPoint(wxPoint2DDouble(coords[0], coords[1]));
+        wxPoint2DDouble c2 = m.TransformPoint(wxPoint2DDouble(coords[2], coords[3]));
+        wxPoint2DDouble e  = m.TransformPoint(wxPoint2DDouble(coords[4], coords[5]));
+        AddCurveToPoint(c1.m_x, c1.m_y, c2.m_x, c2.m_y, e.m_x, e.m_y);
+        iterPoints += 3;
+        break;
+      }
+      case wxPDF_SEG_CLOSE:
+        CloseSubpath();
+        iterPoints += 1;
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 // gets the bounding box enclosing all points (possibly including control points)
 void
 wxPdfGraphicsPathData::GetBox(wxDouble* x, wxDouble* y, wxDouble* w, wxDouble* h) const
 {
-  double x1,y1,x2,y2;
-  m_path.GetBox(&x1, &y1, &x2, &y2);
-  if (x2 < x1)
+  if (!m_hasBox)
   {
-    *x = x2;
-    *w = x1-x2;
+    if (x) *x = 0;
+    if (y) *y = 0;
+    if (w) *w = 0;
+    if (h) *h = 0;
+    return;
   }
-  else
-  {
-    *x = x1;
-    *w = x2-x1;
-  }
-
-  if (y2 < y1)
-  {
-    *y = y2;
-    *h = y1-y2;
-  }
-  else
-  {
-    *y = y1;
-    *h = y2-y1;
-  }
+  if (x) *x = m_minX;
+  if (y) *y = m_minY;
+  if (w) *w = m_maxX - m_minX;
+  if (h) *h = m_maxY - m_minY;
 }
 
 bool
@@ -1345,324 +1362,34 @@ wxPdfGraphicsMatrixData::GetNativeMatrix() const
   return (void*) &m_matrix;
 }
 
-// ----------------------------------------------------------------------------
-// wxPdfGraphicsBitmap implementation
-// ----------------------------------------------------------------------------
-#if 0
-void wxPdfGraphicsBitmapData::InitSurface(cairo_format_t format, int stride)
+//-----------------------------------------------------------------------------
+// wxPdfGraphicsBitmapData implementation
+//-----------------------------------------------------------------------------
+
+wxPdfGraphicsBitmapData::wxPdfGraphicsBitmapData(wxGraphicsRenderer* renderer,
+                                                 const wxBitmap& bmp)
+  : wxGraphicsBitmapData(renderer)
 {
-
-    m_surface = cairo_image_surface_create_for_data(
-                            m_buffer, format, m_width, m_height, stride);
-    m_pattern = cairo_pattern_create_for_surface(m_surface);
-}
-#endif
-
-wxPdfGraphicsBitmapData::wxPdfGraphicsBitmapData( wxGraphicsRenderer* renderer, const wxBitmap& bmp ) : wxGraphicsBitmapData( renderer )
-{
-#if 0
-    wxCHECK_RET( bmp.IsOk(), wxT("Invalid bitmap in wxPdfGraphicsContext::DrawBitmap"));
-
-#ifdef wxHAS_RAW_BITMAP
-    // Create a surface object and copy the bitmap pixel data to it.  if the
-    // image has alpha (or a mask represented as alpha) then we'll use a
-    // different format and iterator than if it doesn't...
-    cairo_format_t bufferFormat = bmp.GetDepth() == 32
-#if defined(__WXGTK__) && !defined(__WXGTK3__)
-                                            || bmp.GetMask()
-#endif
-                                        ? CAIRO_FORMAT_ARGB32
-                                        : CAIRO_FORMAT_RGB24;
-
-    int stride = InitBuffer(bmp.GetWidth(), bmp.GetHeight(), bufferFormat);
-
-    wxBitmap bmpSource = bmp;  // we need a non-const instance
-    wxUint32* data = (wxUint32*)m_buffer;
-
-    if ( bufferFormat == CAIRO_FORMAT_ARGB32 )
-    {
-        // use the bitmap's alpha
-        wxAlphaPixelData
-            pixData(bmpSource, wxPoint(0, 0), wxSize(m_width, m_height));
-        wxCHECK_RET( pixData, wxT("Failed to gain raw access to bitmap data."));
-
-        wxAlphaPixelData::Iterator p(pixData);
-        for (int y=0; y<m_height; y++)
-        {
-            wxAlphaPixelData::Iterator rowStart = p;
-            wxUint32* const rowStartDst = data;
-            for (int x=0; x<m_width; x++)
-            {
-                // Each pixel in CAIRO_FORMAT_ARGB32 is a 32-bit quantity,
-                // with alpha in the upper 8 bits, then red, then green, then
-                // blue. The 32-bit quantities are stored native-endian.
-                // Pre-multiplied alpha is used.
-                unsigned char alpha = p.Alpha();
-                if (alpha == 0)
-                    *data = 0;
-                else
-                    *data = ( alpha                      << 24
-                              | (p.Red() * alpha/255)    << 16
-                              | (p.Green() * alpha/255)  <<  8
-                              | (p.Blue() * alpha/255) );
-                ++data;
-                ++p;
-            }
-
-            data = rowStartDst + stride / 4;
-            p = rowStart;
-            p.OffsetY(pixData, 1);
-        }
-    }
-    else  // no alpha
-    {
-        wxNativePixelData
-            pixData(bmpSource, wxPoint(0, 0), wxSize(m_width, m_height));
-        wxCHECK_RET( pixData, wxT("Failed to gain raw access to bitmap data."));
-
-        wxNativePixelData::Iterator p(pixData);
-        for (int y=0; y<m_height; y++)
-        {
-            wxNativePixelData::Iterator rowStart = p;
-            wxUint32* const rowStartDst = data;
-            for (int x=0; x<m_width; x++)
-            {
-                // Each pixel in CAIRO_FORMAT_RGB24 is a 32-bit quantity, with
-                // the upper 8 bits unused. Red, Green, and Blue are stored in
-                // the remaining 24 bits in that order.  The 32-bit quantities
-                // are stored native-endian.
-                *data = ( p.Red() << 16 | p.Green() << 8 | p.Blue() );
-                ++data;
-                ++p;
-            }
-
-            data = rowStartDst + stride / 4;
-            p = rowStart;
-            p.OffsetY(pixData, 1);
-        }
-    }
-#if defined(__WXMSW__) || defined(__WXGTK3__)
-    // if there is a mask, set the alpha bytes in the target buffer to 
-    // fully transparent or fully opaque
-    if (bmpSource.GetMask())
-    {
-        wxBitmap bmpMask = bmpSource.GetMaskBitmap();
-        bufferFormat = CAIRO_FORMAT_ARGB32;
-        data = (wxUint32*)m_buffer;
-        wxNativePixelData
-            pixData(bmpMask, wxPoint(0, 0), wxSize(m_width, m_height));
-        wxCHECK_RET( pixData, wxT("Failed to gain raw access to mask data."));
-
-        wxNativePixelData::Iterator p(pixData);
-        for (int y=0; y<m_height; y++)
-        {
-            wxNativePixelData::Iterator rowStart = p;
-            wxUint32* const rowStartDst = data;
-            for (int x=0; x<m_width; x++)
-            {
-                if (p.Red()+p.Green()+p.Blue() == 0)
-                    *data = 0;
-                else
-                    *data = (wxALPHA_OPAQUE << 24) | (*data & 0x00FFFFFF);
-                ++data;
-                ++p;
-            }
-
-            data = rowStartDst + stride / 4;
-            p = rowStart;
-            p.OffsetY(pixData, 1);
-        }
-    }
-#endif
-
-    InitSurface(bufferFormat, stride);
-#endif // wxHAS_RAW_BITMAP
-#endif
+  // wxPdfDocument::Image takes a wxImage; convert once and store.
+  // PDF doesn't need the cairo-style raw RGBA buffer the abandoned code
+  // attempted to construct.
+  if (bmp.IsOk())
+  {
+    m_image = bmp.ConvertToImage();
+  }
 }
 
 #if wxUSE_IMAGE
-
-// Helper functions for dealing with alpha pre-multiplication.
-namespace
-{
-
-inline unsigned char Premultiply(unsigned char alpha, unsigned char data)
-{
-    return alpha ? (data * alpha)/0xff : data;
-}
-
-inline unsigned char Unpremultiply(unsigned char alpha, unsigned char data)
-{
-    return alpha ? (data * 0xff)/alpha : data;
-}
-
-} // anonymous namespace
-
 wxPdfGraphicsBitmapData::wxPdfGraphicsBitmapData(wxGraphicsRenderer* renderer,
-                                     const wxImage& image)
-    : wxGraphicsBitmapData(renderer)
+                                                 const wxImage& image)
+  : wxGraphicsBitmapData(renderer)
+  , m_image(image)
 {
-#if 0
-    const cairo_format_t bufferFormat = image.HasAlpha()
-                                            ? CAIRO_FORMAT_ARGB32
-                                            : CAIRO_FORMAT_RGB24;
-
-    int stride = InitBuffer(image.GetWidth(), image.GetHeight(), bufferFormat);
-
-    // Copy wxImage data into the buffer. Notice that we work with wxUint32
-    // values and not bytes becase Cairo always works with buffers in native
-    // endianness.
-    wxUint32* dst = reinterpret_cast<wxUint32*>(m_buffer);
-    const unsigned char* src = image.GetData();
-
-    if ( bufferFormat == CAIRO_FORMAT_ARGB32 )
-    {
-        const unsigned char* alpha = image.GetAlpha();
-
-        for ( int y = 0; y < m_height; y++ )
-        {
-            wxUint32* const rowStartDst = dst;
-
-            for ( int x = 0; x < m_width; x++ )
-            {
-                const unsigned char a = *alpha++;
-
-                *dst++ = a                      << 24 |
-                         Premultiply(a, src[0]) << 16 |
-                         Premultiply(a, src[1]) <<  8 |
-                         Premultiply(a, src[2]);
-                src += 3;
-            }
-
-            dst = rowStartDst + stride / 4;
-        }
-    }
-    else // RGB
-    {
-        for ( int y = 0; y < m_height; y++ )
-        {
-            wxUint32* const rowStartDst = dst;
-
-            for ( int x = 0; x < m_width; x++ )
-            {
-                *dst++ = src[0] << 16 |
-                         src[1] <<  8 |
-                         src[2];
-                src += 3;
-            }
-
-            dst = rowStartDst + stride / 4;
-        }
-    }
-
-    InitSurface(bufferFormat, stride);
-#endif
 }
-
-wxImage wxPdfGraphicsBitmapData::ConvertToImage() const
-{
-  wxImage image(m_width, m_height, false /* don't clear */);
-#if 0
-
-    // Get the surface type and format.
-    wxCHECK_MSG( cairo_surface_get_type(m_surface) == CAIRO_SURFACE_TYPE_IMAGE,
-                 wxNullImage,
-                 wxS("Can't convert non-image surface to image.") );
-
-    switch ( cairo_image_surface_get_format(m_surface) )
-    {
-        case CAIRO_FORMAT_ARGB32:
-            image.SetAlpha();
-            break;
-
-        case CAIRO_FORMAT_RGB24:
-            // Nothing to do, we don't use alpha by default.
-            break;
-
-        case CAIRO_FORMAT_A8:
-        case CAIRO_FORMAT_A1:
-            wxFAIL_MSG(wxS("Unsupported Cairo image surface type."));
-            return wxNullImage;
-
-        default:
-            wxFAIL_MSG(wxS("Unknown Cairo image surface type."));
-            return wxNullImage;
-    }
-
-    // Prepare for copying data.
-    const wxUint32* src = (wxUint32*)cairo_image_surface_get_data(m_surface);
-    wxCHECK_MSG( src, wxNullImage, wxS("Failed to get Cairo surface data.") );
-
-    int stride = cairo_image_surface_get_stride(m_surface);
-    wxCHECK_MSG( stride > 0, wxNullImage,
-                 wxS("Failed to get Cairo surface stride.") );
-
-    // As we work with wxUint32 pointers and not char ones, we need to adjust
-    // the stride accordingly. This should be lossless as the stride must be a
-    // multiple of pixel size.
-    wxASSERT_MSG( !(stride % sizeof(wxUint32)), wxS("Unexpected stride.") );
-    stride /= sizeof(wxUint32);
-
-    unsigned char* dst = image.GetData();
-    unsigned char *alpha = image.GetAlpha();
-    if ( alpha )
-    {
-        // We need to also copy alpha and undo the pre-multiplication as Cairo
-        // stores pre-multiplied values in this format while wxImage does not.
-        for ( int y = 0; y < m_height; y++ )
-        {
-            const wxUint32* const rowStart = src;
-            for ( int x = 0; x < m_width; x++ )
-            {
-                const wxUint32 argb = *src++;
-
-                *alpha++ = (argb & 0xff000000) >> 24;
-
-                // Copy the RGB data undoing the pre-multiplication.
-                *dst++ = Unpremultiply(*alpha, (argb & 0x00ff0000) >> 16);
-                *dst++ = Unpremultiply(*alpha, (argb & 0x0000ff00) >>  8);
-                *dst++ = Unpremultiply(*alpha, (argb & 0x000000ff));
-            }
-
-            src = rowStart + stride;
-        }
-    }
-    else // RGB
-    {
-        // Things are pretty simple in this case, just copy RGB bytes.
-        for ( int y = 0; y < m_height; y++ )
-        {
-            const wxUint32* const rowStart = src;
-            for ( int x = 0; x < m_width; x++ )
-            {
-                const wxUint32 argb = *src++;
-
-                *dst++ = (argb & 0x00ff0000) >> 16;
-                *dst++ = (argb & 0x0000ff00) >>  8;
-                *dst++ = (argb & 0x000000ff);
-            }
-
-            src = rowStart + stride;
-        }
-    }
-
-#endif
-  return image;
-}
-
 #endif // wxUSE_IMAGE
 
 wxPdfGraphicsBitmapData::~wxPdfGraphicsBitmapData()
 {
-#if 0
-    if (m_pattern)
-        cairo_pattern_destroy(m_pattern);
-
-    if (m_surface)
-        cairo_surface_destroy(m_surface);
-
-    delete [] m_buffer;
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1715,6 +1442,9 @@ wxPdfGraphicsContext::Init()
   m_ppi = 72;
   m_pdfDocument = NULL;
   m_imageCount = 0;
+  m_lineAlpha = 1.0;
+  m_fillAlpha = 1.0;
+  m_clipCount = 0;
 
   wxScreenDC screendc;
   m_ppiPdfFont = screendc.GetPPI().GetHeight();
@@ -1739,6 +1469,26 @@ wxPdfGraphicsContext::SetPrintData(const wxPrintData& data)
   }
 }
 
+void
+wxPdfGraphicsContext::SetLineAlpha(double a)
+{
+  m_lineAlpha = a;
+  if (m_pdfDocument)
+  {
+    m_pdfDocument->SetAlpha(m_lineAlpha, m_fillAlpha);
+  }
+}
+
+void
+wxPdfGraphicsContext::SetFillAlpha(double a)
+{
+  m_fillAlpha = a;
+  if (m_pdfDocument)
+  {
+    m_pdfDocument->SetAlpha(m_lineAlpha, m_fillAlpha);
+  }
+}
+
 wxPdfGraphicsContext::wxPdfGraphicsContext(wxGraphicsRenderer* renderer)
   : wxGraphicsContext(renderer)
 {
@@ -1757,9 +1507,24 @@ wxPdfGraphicsContext::~wxPdfGraphicsContext()
 }
 
 bool
-wxPdfGraphicsContext::StartDoc(const wxString& message)
+wxPdfGraphicsContext::ShouldOffset() const
 {
-  wxUnusedVar(message);
+  if (!m_enableOffset)
+    return false;
+
+  int penwidth = 0;
+  if (!m_pen.IsNull())
+  {
+    penwidth = (int)((wxPdfGraphicsPenData*)m_pen.GetRefData())->GetWidth();
+    if (penwidth == 0)
+      penwidth = 1;
+  }
+  return (penwidth % 2) == 1;
+}
+
+bool
+wxPdfGraphicsContext::StartDoc(const wxString& WXUNUSED(message))
+{
   if (!m_templateMode && m_pdfDocument == NULL)
   {
     m_pdfDocument = new wxPdfDocument(m_printData.GetOrientation(), wxString(wxT("pt")), m_printData.GetPaperId());
@@ -1823,62 +1588,114 @@ wxPdfGraphicsContext::EndPage()
 
 void wxPdfGraphicsContext::PushState()
 {
-#if 0
-    cairo_save(m_context);
-#endif
+  if (!m_pdfDocument) return;
+  m_ctmStack.push_back(m_ctm);
+  m_clipCountStack.push_back(m_clipCount);
+  m_clipCount = 0;
+  // PDF "q" saves CTM, colour, line style, fill, and clip path together,
+  // so callers don't need to re-set them manually after PopState.
+  m_pdfDocument->StartTransform();
 }
 
 void wxPdfGraphicsContext::PopState()
 {
-#if 0
-    cairo_restore(m_context);
-#endif
+  if (!m_pdfDocument) return;
+
+  // Pop all clips added at this level.
+  for (int i = 0; i < m_clipCount; ++i)
+  {
+    m_pdfDocument->StopTransform();
+  }
+  // Pop the PushState's q.
+  m_pdfDocument->StopTransform();
+
+  if (!m_ctmStack.empty())
+  {
+    m_ctm = m_ctmStack.back();
+    m_ctmStack.pop_back();
+  }
+  else
+  {
+    m_ctm = wxAffineMatrix2D();
+  }
+
+  if (!m_clipCountStack.empty())
+  {
+    m_clipCount = m_clipCountStack.back();
+    m_clipCountStack.pop_back();
+  }
+  else
+  {
+    m_clipCount = 0;
+  }
 }
 
 void wxPdfGraphicsContext::Clip(const wxRegion& region)
 {
-#if 0
-    // Create a path with all the rectangles in the region
-    wxGraphicsPath path = GetRenderer()->CreatePath();
-    wxRegionIterator ri(region);
-    while (ri)
-    {
-        path.AddRectangle(ri.GetX(), ri.GetY(), ri.GetW(), ri.GetH());
-        ++ri;
-    }
+  if (!m_pdfDocument) return;
 
-    // Put it in the context
-    cairo_path_t* cp = (cairo_path_t*) path.GetNativePath() ;
-    cairo_append_path(m_context, cp);
-
-    // clip to that path
-    cairo_clip(m_context);
-    path.UnGetNativePath(cp);
-#endif
+  // Build a single wxPdfShape with one closed rectangular subpath per
+  // region rectangle, then submit it as a clipping path. This preserves
+  // non-rectangular regions exactly instead of
+  // approximating with axis-aligned ClippingRect calls.
+  wxPdfShape shape;
+  bool any = false;
+  wxRegionIterator ri(region);
+  while (ri)
+  {
+    const double x = ri.GetX();
+    const double y = ri.GetY();
+    const double w = ri.GetW();
+    const double h = ri.GetH();
+    shape.MoveTo(x, y);
+    shape.LineTo(x + w, y);
+    shape.LineTo(x + w, y + h);
+    shape.LineTo(x, y + h);
+    shape.ClosePath();
+    any = true;
+    ++ri;
+  }
+  if (any)
+  {
+    m_pdfDocument->ClippingPath(shape);
+    m_clipCount++;
+  }
 }
 
-void wxPdfGraphicsContext::Clip( wxDouble x, wxDouble y, wxDouble w, wxDouble h )
+void wxPdfGraphicsContext::Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h)
 {
-#if 0
-    // Create a path with this rectangle
-    wxGraphicsPath path = GetRenderer()->CreatePath();
-    path.AddRectangle(x,y,w,h);
+  if (!m_pdfDocument) return;
+  m_pdfDocument->ClippingRect(x, y, w, h);
+  m_clipCount++;
+}
 
-    // Put it in the context
-    cairo_path_t* cp = (cairo_path_t*) path.GetNativePath() ;
-    cairo_append_path(m_context, cp);
-
-    // clip to that path
-    cairo_clip(m_context);
-    path.UnGetNativePath(cp);
-#endif
+void wxPdfGraphicsContext::Clip(const wxPdfShape& shape)
+{
+  if (!m_pdfDocument) return;
+  m_pdfDocument->ClippingPath(shape);
+  m_clipCount++;
 }
 
 void wxPdfGraphicsContext::ResetClip()
 {
-#if 0
-    cairo_reset_clip(m_context);
-#endif
+  if (!m_pdfDocument) return;
+  m_pdfDocument->UnsetClipping();
+  // UnsetClipping typically clears the entire stack of q/Q clips
+  // in wxPdfDocument, so we reset our count.
+  m_clipCount = 0;
+}
+
+void wxPdfGraphicsContext::GetClipBox(wxDouble* x, wxDouble* y,
+                                      wxDouble* w, wxDouble* h)
+{
+  // We don't track an explicit clip rect; PDF maintains it internally
+  // and doesn't surface it. Report the whole page as the clipping
+  // bounds, which is a safe upper bound for callers that use this to
+  // size scratch buffers or similar.
+  if (x) *x = 0;
+  if (y) *y = 0;
+  if (w) *w = m_pdfDocument ? m_pdfDocument->GetPageWidth()  : 0;
+  if (h) *h = m_pdfDocument ? m_pdfDocument->GetPageHeight() : 0;
 }
 
 void*
@@ -1890,163 +1707,148 @@ wxPdfGraphicsContext::GetNativeContext()
 bool
 wxPdfGraphicsContext::SetAntialiasMode(wxAntialiasMode antialias)
 {
-  if (m_antialias == antialias)
-    return true;
-
+  // PDF readers, not the producer, control AA. We accept the request
+  // (recording it on the context state) but produce identical output
+  // either way.
+  if (m_antialias == antialias) return true;
+  if (antialias != wxANTIALIAS_DEFAULT && antialias != wxANTIALIAS_NONE)
+  {
+    return false;
+  }
   m_antialias = antialias;
-#if 0
-    cairo_antialias_t antialiasMode;
-    switch (antialias)
-    {
-        case wxANTIALIAS_DEFAULT:
-            antialiasMode = CAIRO_ANTIALIAS_DEFAULT;
-            break;
-        case wxANTIALIAS_NONE:
-            antialiasMode = CAIRO_ANTIALIAS_NONE;
-            break;
-        default:
-            return false;
-    }
-    cairo_set_antialias(m_context, antialiasMode);
-#endif
   return true;
 }
 
 bool wxPdfGraphicsContext::SetInterpolationQuality(wxInterpolationQuality WXUNUSED(interpolation))
 {
-    // placeholder
-    return false;
+  // PDF has no analog. Reject so callers can fall back if they care.
+  return false;
 }
 
 bool wxPdfGraphicsContext::SetCompositionMode(wxCompositionMode op)
 {
-  // TODO: SetAlpha ???
-#if 0
-    if ( m_composition == op )
-        return true;
+  // PDF lacks Porter-Duff compositing; only the OVER / SOURCE flavours map
+  // cleanly to its normal blend mode. Everything else is rejected so
+  // callers can detect non-support.
+  if (m_composition == op) return true;
 
-    m_composition = op;
-    cairo_operator_t cop;
-    switch (op)
-    {
-        case wxCOMPOSITION_CLEAR:
-            cop = CAIRO_OPERATOR_CLEAR;
-            break;
-        case wxCOMPOSITION_SOURCE:
-            cop = CAIRO_OPERATOR_SOURCE;
-            break;
-        case wxCOMPOSITION_OVER:
-            cop = CAIRO_OPERATOR_OVER;
-            break;
-        case wxCOMPOSITION_IN:
-            cop = CAIRO_OPERATOR_IN;
-            break;
-        case wxCOMPOSITION_OUT:
-            cop = CAIRO_OPERATOR_OUT;
-            break;
-        case wxCOMPOSITION_ATOP:
-            cop = CAIRO_OPERATOR_ATOP;
-            break;
-        case wxCOMPOSITION_DEST:
-            cop = CAIRO_OPERATOR_DEST;
-            break;
-        case wxCOMPOSITION_DEST_OVER:
-            cop = CAIRO_OPERATOR_DEST_OVER;
-            break;
-        case wxCOMPOSITION_DEST_IN:
-            cop = CAIRO_OPERATOR_DEST_IN;
-            break;
-        case wxCOMPOSITION_DEST_OUT:
-            cop = CAIRO_OPERATOR_DEST_OUT;
-            break;
-        case wxCOMPOSITION_DEST_ATOP:
-            cop = CAIRO_OPERATOR_DEST_ATOP;
-            break;
-        case wxCOMPOSITION_XOR:
-            cop = CAIRO_OPERATOR_XOR;
-            break;
-        case wxCOMPOSITION_ADD:
-            cop = CAIRO_OPERATOR_ADD;
-            break;
-        default:
-            return false;
-    }
-    cairo_set_operator(m_context, cop);
-#endif
-  return true;
+  switch (op)
+  {
+    case wxCOMPOSITION_OVER:
+    case wxCOMPOSITION_SOURCE:
+      m_composition = op;
+      if (m_pdfDocument)
+      {
+        m_pdfDocument->SetAlpha(m_lineAlpha, m_fillAlpha,
+                                wxPDF_BLENDMODE_NORMAL);
+      }
+      return true;
+
+    default:
+      return false;
+  }
 }
 
 void
-wxPdfGraphicsContext::GetDPI(wxDouble* dpiX, wxDouble* dpiY)
+wxPdfGraphicsContext::GetDPI(wxDouble* dpiX, wxDouble* dpiY) const
 {
-  // TODO: required?
+  // PDF user space is fixed at 72 dpi unless rescaled.
   *dpiX = 72.0;
   *dpiY = 72.0;
 }
 
 void wxPdfGraphicsContext::BeginLayer(wxDouble opacity)
 {
-#if 0
-    m_layerOpacities.push_back(opacity);
-    cairo_push_group(m_context);
-#endif
+  // PDF doesn't have a perfect equivalent of cairo's transparency groups
+  // without emitting Form XObjects + soft masks. The pragmatic emulation
+  // (matching what GDI+ does) is to multiply the current line / fill
+  // alphas by the layer opacity for the duration of the layer; everything
+  // drawn inside it picks up the lowered opacity.
+  AlphaPair saved = { m_lineAlpha, m_fillAlpha };
+  m_layerAlphaStack.push_back(saved);
+  SetLineAlpha(m_lineAlpha * opacity);
+  SetFillAlpha(m_fillAlpha * opacity);
 }
 
 void wxPdfGraphicsContext::EndLayer()
 {
-#if 0
-    float opacity = m_layerOpacities.back();
-    m_layerOpacities.pop_back();
-    cairo_pop_group_to_source(m_context);
-    cairo_paint_with_alpha(m_context,opacity);
-#endif
+  if (m_layerAlphaStack.empty()) return;
+  AlphaPair saved = m_layerAlphaStack.back();
+  m_layerAlphaStack.pop_back();
+  SetLineAlpha(saved.line);
+  SetFillAlpha(saved.fill);
 }
 
-void wxPdfGraphicsContext::Translate( wxDouble dx , wxDouble dy )
+void wxPdfGraphicsContext::Translate(wxDouble dx, wxDouble dy)
 {
-#if 0
-    cairo_translate(m_context,dx,dy);
-#endif
+  if (!m_pdfDocument) return;
+  m_pdfDocument->Transform(1, 0, 0, 1, dx, dy);
+  m_ctm.Translate(dx, dy);
 }
 
-void wxPdfGraphicsContext::Scale( wxDouble xScale , wxDouble yScale )
+void wxPdfGraphicsContext::Scale(wxDouble xScale, wxDouble yScale)
 {
-#if 0
-    cairo_scale(m_context,xScale,yScale);
-#endif
+  if (!m_pdfDocument) return;
+  m_pdfDocument->Transform(xScale, 0, 0, yScale, 0, 0);
+  m_ctm.Scale(xScale, yScale);
 }
 
-void wxPdfGraphicsContext::Rotate( wxDouble angle )
+void wxPdfGraphicsContext::Rotate(wxDouble angle)
 {
-#if 0
-    cairo_rotate(m_context,angle);
-#endif
+  if (!m_pdfDocument) return;
+  const double c = cos(angle);
+  const double s = sin(angle);
+  m_pdfDocument->Transform(c, s, -s, c, 0, 0);
+  m_ctm.Rotate(angle);
 }
 
-// concatenates this transform with the current transform of this context
-void wxPdfGraphicsContext::ConcatTransform( const wxGraphicsMatrix& matrix )
+void wxPdfGraphicsContext::ConcatTransform(const wxGraphicsMatrix& matrix)
 {
-#if 0
-    cairo_transform(m_context,(const cairo_matrix_t *) matrix.GetNativeMatrix());
-#endif
+  if (!m_pdfDocument) return;
+  const wxAffineMatrix2D& m =
+    *static_cast<const wxAffineMatrix2D*>(matrix.GetNativeMatrix());
+
+  wxMatrix2D mat2D;
+  wxPoint2DDouble tr;
+  m.Get(&mat2D, &tr);
+  m_pdfDocument->Transform(mat2D.m_11, mat2D.m_12,
+                           mat2D.m_21, mat2D.m_22,
+                           tr.m_x, tr.m_y);
+  m_ctm.Concat(m);
 }
 
-// sets the transform of this context
-void wxPdfGraphicsContext::SetTransform( const wxGraphicsMatrix& matrix )
+void wxPdfGraphicsContext::SetTransform(const wxGraphicsMatrix& matrix)
 {
-#if 0
-    cairo_set_matrix(m_context,(const cairo_matrix_t*) matrix.GetNativeMatrix());
-#endif
+  if (!m_pdfDocument) return;
+
+  const wxAffineMatrix2D& m =
+    *static_cast<const wxAffineMatrix2D*>(matrix.GetNativeMatrix());
+
+  // Instead of Q q (which pops clipping and other state), 
+  // apply the difference between current CTM and the new one.
+  wxAffineMatrix2D diff = m_ctm;
+  diff.Invert();
+  diff.Concat(m); // diff = inv(C) * M
+
+  wxMatrix2D mat2D;
+  wxPoint2DDouble tr;
+  diff.Get(&mat2D, &tr);
+  m_pdfDocument->Transform(mat2D.m_11, mat2D.m_12,
+                           mat2D.m_21, mat2D.m_22,
+                           tr.m_x, tr.m_y);
+  m_ctm = m;
 }
 
-// gets the matrix of this context
 wxGraphicsMatrix
 wxPdfGraphicsContext::GetTransform() const
 {
   wxGraphicsMatrix matrix = CreateMatrix();
-#if 0
-    cairo_get_matrix(m_context,(cairo_matrix_t*) matrix.GetNativeMatrix());
-#endif
+  wxMatrix2D mat2D;
+  wxPoint2DDouble tr;
+  m_ctm.Get(&mat2D, &tr);
+  matrix.Set(mat2D.m_11, mat2D.m_12,
+             mat2D.m_21, mat2D.m_22,
+             tr.m_x, tr.m_y);
   return matrix;
 }
 
@@ -2087,20 +1889,226 @@ wxPdfGraphicsContext::StrokePath(const wxGraphicsPath& path)
   wxCHECK_RET(m_pdfDocument, wxT("wxPdfGraphicsContext::StrokePath - no valid PDF document"));
   if (!m_pen.IsNull())
   {
+    // Re-apply the pen so PushState/PopState can't leave us out of sync
+    // with the document's draw state.
+    ((wxPdfGraphicsPenData*) m_pen.GetRefData())->Apply(this);
     const wxPdfShape& shape = ((wxPdfGraphicsPathData*) path.GetRefData())->GetPdfShape();
     m_pdfDocument->Shape(shape, wxPDF_STYLE_DRAW);
   }
 }
 
-void wxPdfGraphicsContext::FillPath( const wxGraphicsPath& path , wxPolygonFillMode fillStyle )
+// Helper: fill a path with a multi-stop gradient brush.
+//
+// PDF's wxPdfDocument::AxialGradient/RadialGradient only accept two
+// colours, and the engine doesn't yet expose a Type 3 stitching function.
+// For axial gradients with N >= 2 stops we paint N-1 separately-clipped
+// AxialGradients in series. The trick: rotate user space so the gradient
+// axis runs along x in [0,1], clip to the actual path, then for each
+// stop interval [t_i, t_{i+1}] call SetFillGradient with rect
+// (t_i, -big, t_{i+1}-t_i, 2*big). SetFillGradient internally clips to
+// that rect, so each slice paints only its own band; the seams line up
+// because adjacent gradients share an endpoint colour.
+//
+// For radial gradients with > 2 stops we currently fall back to the
+// first/last stop pair (PDF radial slicing requires annular clipping
+// which the engine doesn't expose).
+static void
+DoFillPathGradient(wxPdfGraphicsContext* context,
+                   wxPdfGraphicsBrushData* brush,
+                   const wxPdfShape& shape,
+                   wxPolygonFillMode fillStyle)
+{
+  wxPdfDocument* doc = context->GetPdfDocument();
+  if (!doc) return;
+
+  const wxGraphicsGradientStops& stops = brush->GetStops();
+  const size_t numStops = stops.GetCount();
+  if (numStops < 2)
+  {
+    // Degenerate: treat as solid fill of the start colour.
+    int saveRule = doc->GetFillingRule();
+    doc->SetFillingRule(fillStyle);
+    doc->Shape(shape, wxPDF_STYLE_FILL);
+    doc->SetFillingRule(saveRule);
+    return;
+  }
+
+  if (brush->GetGradientKind() == wxPdfGraphicsBrushData::GRAD_LINEAR)
+  {
+    const double gx1 = brush->GetGradX1();
+    const double gy1 = brush->GetGradY1();
+    const double gx2 = brush->GetGradX2();
+    const double gy2 = brush->GetGradY2();
+    const double dx = gx2 - gx1;
+    const double dy = gy2 - gy1;
+    const double len = sqrt(dx * dx + dy * dy);
+    if (len <= 0.0)
+    {
+      // Degenerate axis: solid fill of the first stop.
+      const wxColour c = stops.GetStartColour();
+      doc->SetFillColour(c.Red(), c.Green(), c.Blue());
+      int saveRule = doc->GetFillingRule();
+      doc->SetFillingRule(fillStyle);
+      doc->Shape(shape, wxPDF_STYLE_FILL);
+      doc->SetFillingRule(saveRule);
+      return;
+    }
+
+    context->PushState();
+
+    // Clip to the actual path so the gradient slices are bounded by it.
+    context->Clip(shape);
+
+    // Rotate / scale user space so the gradient axis runs from (0,0) to
+    // (1,0). We need: translate by (gx1,gy1), then rotate by theta,
+    // then scale by len. Composed CTM in column-major:
+    //   M = T(gx1,gy1) * R(theta) * S(len)
+    // where theta = atan2(dy, dx). PDF's Transform takes a, b, c, d, tx, ty
+    // such that the matrix is [[a c tx][b d ty]].
+    // This is equivalent to mapping (1,0) to (dx,dy) and (0,1) to (-dy,dx).
+    doc->Transform(dx, dy, -dy, dx, gx1, gy1);
+
+    // Big perpendicular extent. 10000 user units is chosen as a safe, 
+    // effectively infinite value compared to any realistic page dimensions.
+    // Since we have already clipped the entire context to the actual path shape,
+    // this large rectangle merely ensures the gradient slice covers the 
+    // full height of the geometry without needing to calculate the specific
+    // bounding box of the slice.
+    const double bigY = 10000.0;
+
+    for (size_t i = 0; i + 1 < numStops; ++i)
+    {
+      const wxGraphicsGradientStop s0 = stops.Item(i);
+      const wxGraphicsGradientStop s1 = stops.Item(i + 1);
+      const double t0 = s0.GetPosition();
+      const double t1 = s1.GetPosition();
+      if (t1 <= t0) continue;
+      const wxColour c0 = s0.GetColour();
+      const wxColour c1 = s1.GetColour();
+
+      // Slice rect in transformed coords: x = [t0, t1], y = [-bigY, bigY].
+      // SetFillGradient sets a clip rect and maps the gradient (defined in
+      // 0..1 normalised coords) onto it. We register a left-to-right axial
+      // gradient and target the slice rect.
+      int gradId = doc->AxialGradient(
+        wxPdfColour(c0.Red(), c0.Green(), c0.Blue()),
+        wxPdfColour(c1.Red(), c1.Green(), c1.Blue()),
+        0.0, 0.5, 1.0, 0.5, 1.0);
+      if (gradId > 0)
+      {
+        doc->SetFillGradient(t0, -bigY, t1 - t0, 2 * bigY, gradId);
+      }
+    }
+
+    context->PopState();
+    return;
+  }
+
+  // Radial. PDF supports two-stop radial natively. For >2 stops we'd need
+  // annular clipping, which wxPdfDocument doesn't currently expose; fall
+  // back to the first / last stop pair so we at least produce a smooth
+  // radial gradient.
+  const wxColour c0 = stops.GetStartColour();
+  const wxColour c1 = stops.GetEndColour();
+  const double xo = brush->GetGradX1();
+  const double yo = brush->GetGradY1();
+  const double xc = brush->GetGradX2();
+  const double yc = brush->GetGradY2();
+  const double r  = brush->GetGradRadius();
+
+  // Use the path's bbox as the SetFillGradient rect. The radial gradient
+  // is registered in 0..1 normalised coords mapped onto that rect.
+  double bx, by, bw, bh;
+  // We use the global bbox of the shape via a temporary path-data trick:
+  // pull it from the source GraphicsPath via the brush's caller. Easier:
+  // recompute from the shape's segments here.
+  bx = by = 0.0; bw = bh = 1.0;
+  {
+    const unsigned int n = shape.GetSegmentCount();
+    int iter = 0;
+    double pts[8];
+    bool first = true;
+    double minX = 0, minY = 0, maxX = 0, maxY = 0;
+    for (unsigned int i = 0; i < n; ++i)
+    {
+      wxPdfSegmentType seg = shape.GetSegment(i, iter, pts);
+      int npts = 0;
+      switch (seg)
+      {
+        case wxPDF_SEG_MOVETO:
+        case wxPDF_SEG_LINETO:
+        case wxPDF_SEG_CLOSE:
+          npts = 1; break;
+        case wxPDF_SEG_CURVETO:
+          npts = 3; break;
+        default: break;
+      }
+      for (int k = 0; k < npts; ++k)
+      {
+        const double x = pts[2 * k];
+        const double y = pts[2 * k + 1];
+        if (first) { minX = maxX = x; minY = maxY = y; first = false; }
+        else
+        {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      iter += npts;
+    }
+    if (!first)
+    {
+      bx = minX; by = minY; bw = maxX - minX; bh = maxY - minY;
+    }
+  }
+
+  if (bw <= 0.0 || bh <= 0.0) return;
+
+  // Normalise centres / radius into the bbox 0..1 range.
+  const double nxo = (xo - bx) / bw;
+  const double nyo = (yo - by) / bh;
+  const double nxc = (xc - bx) / bw;
+  const double nyc = (yc - by) / bh;
+  const double nr  = r / wxMax(bw, bh);
+
+  context->PushState();
+  context->Clip(shape);
+  int gradId = doc->RadialGradient(
+    wxPdfColour(c0.Red(), c0.Green(), c0.Blue()),
+    wxPdfColour(c1.Red(), c1.Green(), c1.Blue()),
+    nxo, nyo, 0.0, nxc, nyc, nr, 1.0);
+  if (gradId > 0)
+  {
+    doc->SetFillGradient(bx, by, bw, bh, gradId);
+  }
+  context->PopState();
+}
+
+void wxPdfGraphicsContext::FillPath(const wxGraphicsPath& path, wxPolygonFillMode fillStyle)
 {
   wxCHECK_RET(m_pdfDocument, wxT("wxPdfGraphicsContext::FillPath - no valid PDF document"));
 
-  if (!m_brush.IsNull())
+  if (m_brush.IsNull()) return;
+
+  wxPdfGraphicsBrushData* brush =
+    static_cast<wxPdfGraphicsBrushData*>(m_brush.GetRefData());
+  brush->Apply(this);
+
+  const wxPdfShape& shape =
+    ((wxPdfGraphicsPathData*) path.GetRefData())->GetPdfShape();
+
+  if (brush->HasGradient())
   {
-    const wxPdfShape& shape = ((wxPdfGraphicsPathData*) path.GetRefData())->GetPdfShape();
-    m_pdfDocument->Shape(shape, wxPDF_STYLE_FILL);
+    DoFillPathGradient(this, brush, shape, fillStyle);
+    return;
   }
+
+  int saveFillingRule = m_pdfDocument->GetFillingRule();
+  m_pdfDocument->SetFillingRule(fillStyle);
+  m_pdfDocument->Shape(shape, wxPDF_STYLE_FILL);
+  m_pdfDocument->SetFillingRule(saveFillingRule);
 }
 
 void
@@ -2195,30 +2203,19 @@ wxPdfGraphicsContext::DrawBitmap(const wxBitmap& bmp, wxDouble x, wxDouble y, wx
 void
 wxPdfGraphicsContext::DrawBitmap(const wxGraphicsBitmap& bmp, wxDouble x, wxDouble y, wxDouble w, wxDouble h)
 {
-#if 0
-    PushState();
+  wxCHECK_RET(m_pdfDocument, wxT("wxPdfGraphicsContext::DrawBitmap - no valid PDF document"));
+  if (bmp.IsNull()) return;
 
-    // In case we're scaling the image by using a width and height different
-    // than the bitmap's size create a pattern transformation on the surface and
-    // draw the transformed pattern.
-    wxPdfGraphicsBitmapData* data = static_cast<wxPdfGraphicsBitmapData*>(bmp.GetRefData());
-    cairo_pattern_t* pattern = data->GetCairoPattern();
-    wxSize size = data->GetSize();
+  wxPdfGraphicsBitmapData* data =
+    static_cast<wxPdfGraphicsBitmapData*>(bmp.GetRefData());
+  if (!data) return;
+  const wxImage& image = data->GetImage();
+  if (!image.IsOk()) return;
 
-    wxDouble scaleX = w / size.GetWidth();
-    wxDouble scaleY = h / size.GetHeight();
-
-    // prepare to draw the image
-    cairo_translate(m_context, x, y);
-    cairo_scale(m_context, scaleX, scaleY);
-    cairo_set_source(m_context, pattern);
-    // use the original size here since the context is scaled already...
-    cairo_rectangle(m_context, 0, 0, size.GetWidth(), size.GetHeight());
-    // fill the rectangle using the pattern
-    cairo_fill(m_context);
-
-    PopState();
-#endif
+  // Each embedded image needs a unique name; m_imageCount provides the
+  // monotonic suffix the same way wxPdfDCImpl::DoDrawBitmap does.
+  const wxString imgName = wxString::Format(wxT("pdfgcimg%d"), ++m_imageCount);
+  m_pdfDocument->Image(imgName, image, x, y, w, h, wxPdfLink(-1), 0);
 }
 
 void
@@ -2378,115 +2375,70 @@ wxPdfGraphicsContext::CalculateFontMetrics(wxPdfFontDescription* desc, double po
 }
 
 //-----------------------------------------------------------------------------
-// wxPdfGraphicsRenderer declaration
-//-----------------------------------------------------------------------------
-
-class WXDLLIMPEXP_PDFDOC wxPdfGraphicsRenderer : public wxGraphicsRenderer
-{
-public :
-  wxPdfGraphicsRenderer() {}
-
-  virtual ~wxPdfGraphicsRenderer() {}
-
-  // Context
-  virtual wxGraphicsContext* CreateContext(const wxWindowDC& dc);
-  virtual wxGraphicsContext* CreateContext(const wxMemoryDC& dc);
-#if wxUSE_PRINTING_ARCHITECTURE
-  virtual wxGraphicsContext* CreateContext(const wxPrinterDC& dc);
-#endif
-#ifdef __WXMSW__
-#if wxUSE_ENH_METAFILE
-  virtual wxGraphicsContext* CreateContext(const wxEnhMetaFileDC& dc);
-#endif
-#endif
-
-  virtual wxGraphicsContext* CreateContextFromNativeContext(void* context);
-
-  virtual wxGraphicsContext* CreateContextFromNativeWindow(void* window);
-
-  virtual wxGraphicsContext* CreateContext(wxWindow* window);
-
-#if wxUSE_IMAGE
-  virtual wxGraphicsContext* CreateContextFromImage(wxImage& image);
-#endif // wxUSE_IMAGE
-
-  virtual wxGraphicsContext* CreateMeasuringContext();
-
-  // Path
-  virtual wxGraphicsPath CreatePath();
-
-  // Matrix
-  virtual wxGraphicsMatrix CreateMatrix(wxDouble a = 1.0, wxDouble b = 0.0, 
-                                        wxDouble c = 0.0, wxDouble d = 1.0,
-                                        wxDouble tx = 0.0, wxDouble ty = 0.0);
-
-  virtual wxGraphicsPen CreatePen(const wxPen& pen);
-
-  virtual wxGraphicsBrush CreateBrush(const wxBrush& brush);
-
-  virtual wxGraphicsBrush CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
-                                                    wxDouble x2, wxDouble y2,
-                                                    const wxGraphicsGradientStops& stops);
-
-   virtual wxGraphicsBrush CreateRadialGradientBrush(wxDouble xo, wxDouble yo,
-                                                     wxDouble xc, wxDouble yc,
-                                                     wxDouble radius,
-                                                     const wxGraphicsGradientStops& stops);
-
-  // sets the font
-  virtual wxGraphicsFont CreateFont(const wxFont& font, const wxColour& col = *wxBLACK);
-  virtual wxGraphicsFont CreateFont(double sizeInPixels,
-                                    const wxString& facename,
-                                    int flags = wxFONTFLAG_DEFAULT,
-                                    const wxColour& col = *wxBLACK);
-
-  // create a native bitmap representation
-  virtual wxGraphicsBitmap CreateBitmap(const wxBitmap& bitmap);
-#if wxUSE_IMAGE
-  virtual wxGraphicsBitmap CreateBitmapFromImage(const wxImage& image);
-  virtual wxImage CreateImageFromBitmap(const wxGraphicsBitmap& bmp);
-#endif // wxUSE_IMAGE
-
-  // create a graphics bitmap from a native bitmap
-  virtual wxGraphicsBitmap CreateBitmapFromNativeBitmap(void* bitmap);
-
-  // create a subimage from a native image representation
-  virtual wxGraphicsBitmap CreateSubBitmap(const wxGraphicsBitmap &bitmap,
-                                           wxDouble x, wxDouble y, 
-                                           wxDouble w, wxDouble h);
-
-protected :
-
-private :
-
-  DECLARE_DYNAMIC_CLASS_NO_COPY(wxPdfGraphicsRenderer)
-};
-
-//-----------------------------------------------------------------------------
 // wxPdfGraphicsRenderer implementation
 //-----------------------------------------------------------------------------
 
-IMPLEMENT_DYNAMIC_CLASS(wxPdfGraphicsRenderer,wxGraphicsRenderer)
+wxIMPLEMENT_DYNAMIC_CLASS(wxPdfGraphicsRenderer, wxGraphicsRenderer);
+
+wxGraphicsRenderer*
+wxPdfGraphicsRenderer::GetPdfRenderer()
+{
+  static wxPdfGraphicsRenderer s_renderer;
+  return &s_renderer;
+}
 
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContext(const wxWindowDC& dc)
+wxPdfGraphicsRenderer::CreateContextFromPrintData(const wxPrintData& printData)
 {
-  wxUnusedVar(dc);
+  return new wxPdfGraphicsContext(this, printData);
+}
+
+wxGraphicsContext*
+wxPdfGraphicsRenderer::CreateContext(wxPdfDC* dc)
+{
+  if (!dc)
+  {
+    return NULL;
+  }
+  wxPdfDocument* pdfDocument = dc->GetPdfDocument();
+  if (!pdfDocument)
+  {
+    return NULL;
+  }
+  // The DC owns the document; reuse the template-mode constructor so the
+  // GC does not delete it on destruction.
+  int width = 0;
+  int height = 0;
+  dc->GetSize(&width, &height);
+  return new wxPdfGraphicsContext(this, pdfDocument,
+                                  static_cast<double>(width),
+                                  static_cast<double>(height));
+}
+
+wxGraphicsContext*
+wxPdfGraphicsRenderer::CreateContextFromDocument(wxPdfDocument* pdfDocument,
+                                                 double templateWidth,
+                                                 double templateHeight)
+{
+  return new wxPdfGraphicsContext(this, pdfDocument, templateWidth, templateHeight);
+}
+
+wxGraphicsContext*
+wxPdfGraphicsRenderer::CreateContext(const wxWindowDC& WXUNUSED(dc))
+{
   return NULL;
 }
 
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContext(const wxMemoryDC& dc)
+wxPdfGraphicsRenderer::CreateContext(const wxMemoryDC& WXUNUSED(dc))
 {
-  wxUnusedVar(dc);
   return NULL;
 }
 
 #if wxUSE_PRINTING_ARCHITECTURE
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContext(const wxPrinterDC& dc)
+wxPdfGraphicsRenderer::CreateContext(const wxPrinterDC& WXUNUSED(dc))
 {
-  wxUnusedVar(dc);
   return NULL;
 }
 #endif
@@ -2494,39 +2446,42 @@ wxPdfGraphicsRenderer::CreateContext(const wxPrinterDC& dc)
 #ifdef __WXMSW__
 #if wxUSE_ENH_METAFILE
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContext(const wxEnhMetaFileDC& dc)
+wxPdfGraphicsRenderer::CreateContext(const wxEnhMetaFileDC& WXUNUSED(dc))
 {
-  wxUnusedVar(dc);
   return NULL;
 }
 #endif
 #endif
 
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContextFromNativeContext(void* context)
+wxPdfGraphicsRenderer::CreateContextFromNativeContext(void* WXUNUSED(context))
 {
-  wxUnusedVar(context);
   return NULL;
 }
 
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContextFromNativeWindow(void* window)
+wxPdfGraphicsRenderer::CreateContextFromNativeWindow(void* WXUNUSED(window))
 {
-  wxUnusedVar(window);
   return NULL;
 }
 
-wxGraphicsContext * wxPdfGraphicsRenderer::CreateContext(wxWindow* window)
+#ifdef __WXMSW__
+wxGraphicsContext*
+wxPdfGraphicsRenderer::CreateContextFromNativeHDC(WXHDC WXUNUSED(dc))
 {
-  wxUnusedVar(window);
+  return NULL;
+}
+#endif
+
+wxGraphicsContext * wxPdfGraphicsRenderer::CreateContext(wxWindow* WXUNUSED(window))
+{
   return NULL;
 }
 
 #if wxUSE_IMAGE
 wxGraphicsContext*
-wxPdfGraphicsRenderer::CreateContextFromImage(wxImage& image)
+wxPdfGraphicsRenderer::CreateContextFromImage(wxImage& WXUNUSED(image))
 {
-  wxUnusedVar(image);
   return NULL;
 }
 #endif // wxUSE_IMAGE
@@ -2534,7 +2489,10 @@ wxPdfGraphicsRenderer::CreateContextFromImage(wxImage& image)
 wxGraphicsContext*
 wxPdfGraphicsRenderer::CreateMeasuringContext()
 {
-  return NULL;
+  // Document-less context. Only GetTextExtent and font / path / matrix
+  // operations that don't touch a wxPdfDocument are expected to work,
+  // matching wxCairoRenderer::CreateMeasuringContext() semantics.
+  return new wxPdfGraphicsContext(this);
 }
 
 // Path
@@ -2562,18 +2520,15 @@ wxPdfGraphicsRenderer::CreateMatrix(wxDouble a, wxDouble b, wxDouble c, wxDouble
 }
 
 wxGraphicsPen
-wxPdfGraphicsRenderer::CreatePen(const wxPen& pen)
+wxPdfGraphicsRenderer::CreatePen(const wxGraphicsPenInfo& info)
 {
-  if (!pen.IsOk() || pen.GetStyle() == wxPENSTYLE_TRANSPARENT)
+  if (info.GetStyle() == wxPENSTYLE_TRANSPARENT)
   {
     return wxNullGraphicsPen;
   }
-  else
-  {
-    wxGraphicsPen p;
-    p.SetRefData(new wxPdfGraphicsPenData(this, pen));
-    return p;
-  }
+  wxGraphicsPen p;
+  p.SetRefData(new wxPdfGraphicsPenData(this, info));
+  return p;
 }
 
 wxGraphicsBrush
@@ -2594,8 +2549,11 @@ wxPdfGraphicsRenderer::CreateBrush(const wxBrush& brush)
 wxGraphicsBrush
 wxPdfGraphicsRenderer::CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
                                                  wxDouble x2, wxDouble y2,
-                                                 const wxGraphicsGradientStops& stops)
+                                                 const wxGraphicsGradientStops& stops,
+                                                 const wxGraphicsMatrix& WXUNUSED(matrix))
 {
+  // We currently ignore the optional gradient matrix; the gradient axis
+  // is treated as already in user space.
   wxGraphicsBrush p;
   wxPdfGraphicsBrushData* d = new wxPdfGraphicsBrushData(this);
   d->CreateLinearGradientBrush(x1, y1, x2, y2, stops);
@@ -2606,8 +2564,11 @@ wxPdfGraphicsRenderer::CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
 wxGraphicsBrush
 wxPdfGraphicsRenderer::CreateRadialGradientBrush(wxDouble xo, wxDouble yo,
                                                  wxDouble xc, wxDouble yc, wxDouble r,
-                                                 const wxGraphicsGradientStops& stops)
+                                                 const wxGraphicsGradientStops& stops,
+                                                 const wxGraphicsMatrix& WXUNUSED(matrix))
 {
+  // Optional gradient matrix is ignored; the gradient is treated as
+  // already in user space.
   wxGraphicsBrush p;
   wxPdfGraphicsBrushData* d = new wxPdfGraphicsBrushData(this);
   d->CreateRadialGradientBrush(xo, yo, xc, yc, r, stops);
@@ -2639,6 +2600,17 @@ wxPdfGraphicsRenderer::CreateFont(double sizeInPixels,
   wxGraphicsFont font;
   font.SetRefData(new wxPdfGraphicsFontData(this, sizeInPixels, facename, flags, col));
   return font;
+}
+
+wxGraphicsFont
+wxPdfGraphicsRenderer::CreateFontAtDPI(const wxFont& font,
+                                       const wxRealPoint& WXUNUSED(dpi),
+                                       const wxColour& col)
+{
+  // PDF user space is fixed at 72 dpi, so the requested DPI doesn't
+  // affect anything in the produced document. Forward to the regular
+  // wxFont-based factory.
+  return CreateFont(font, col);
 }
 
 wxGraphicsBitmap
@@ -2681,1420 +2653,35 @@ wxPdfGraphicsRenderer::CreateImageFromBitmap(const wxGraphicsBitmap& bmp)
 #endif // wxUSE_IMAGE
 
 wxGraphicsBitmap
-wxPdfGraphicsRenderer::CreateBitmapFromNativeBitmap(void* bitmap)
+wxPdfGraphicsRenderer::CreateBitmapFromNativeBitmap(void* WXUNUSED(bitmap))
 {
-  wxUnusedVar(bitmap);
   wxFAIL_MSG("wxPdfGraphicsRenderer::CreateBitmapFromNativeBitmap is not implemented.");
   return wxNullGraphicsBitmap;
 }
 
 wxGraphicsBitmap
-wxPdfGraphicsRenderer::CreateSubBitmap(const wxGraphicsBitmap& bitmap,
-                                       wxDouble x, wxDouble y,
-                                       wxDouble w, wxDouble h)
+wxPdfGraphicsRenderer::CreateSubBitmap(const wxGraphicsBitmap& WXUNUSED(bitmap),
+                                       wxDouble WXUNUSED(x), wxDouble WXUNUSED(y),
+                                       wxDouble WXUNUSED(w), wxDouble WXUNUSED(h))
 {
-  wxUnusedVar(bitmap);
-  wxUnusedVar(x);
-  wxUnusedVar(y);
-  wxUnusedVar(w);
-  wxUnusedVar(h);
   wxFAIL_MSG("wxPdfGraphicsRenderer::CreateSubBitmap is not implemented.");
   return wxNullGraphicsBitmap;
 }
 
-
-#if 0 // wxPdfDC
-
-//-------------------------------------------------------------------------------
-// wxPostScriptDC
-//-------------------------------------------------------------------------------
-
-
-IMPLEMENT_DYNAMIC_CLASS(wxPdfDC, wxDC)
-
-wxPdfDC::wxPdfDC()
-  : wxDC(new wxPdfDCImpl(this))
+wxString
+wxPdfGraphicsRenderer::GetName() const
 {
-}
-
-wxPdfDC::wxPdfDC(const wxPrintData& printData)
-  : wxDC(new wxPdfDCImpl(this, printData))
-{
-}
-
-wxPdfDC::wxPdfDC(wxPdfDocument* pdfDocument, double templateWidth, double templateHeight)
-  : wxDC(new wxPdfDCImpl(this, pdfDocument, templateWidth, templateHeight))
-{
-}
-
-wxPdfDocument*
-wxPdfDC::GetPdfDocument()
-{
-  return ((wxPdfDCImpl*) m_pimpl)->GetPdfDocument();
+  return wxS("pdf");
 }
 
 void
-wxPdfDC::SetResolution(int ppi)
+wxPdfGraphicsRenderer::GetVersion(int* major, int* minor, int* micro) const
 {
-  ((wxPdfDCImpl*) m_pimpl)->SetResolution(ppi);
+  // Track the wxpdfdoc release.
+  if (major) *major = PDFDOC_MAJOR_VERSION;
+  if (minor) *minor = PDFDOC_MINOR_VERSION;
+  if (micro) *micro = PDFDOC_RELEASE_NUMBER;
 }
 
-int
-wxPdfDC::GetResolution() const
-{
-  return ((wxPdfDCImpl*) m_pimpl)->GetResolution();
-}
-
-void
-wxPdfDC::SetMapModeStyle(wxPdfMapModeStyle style)
-{
-  ((wxPdfDCImpl*) m_pimpl)->SetMapModeStyle(style);
-}
-
-wxPdfMapModeStyle
-wxPdfDC::GetMapModeStyle() const
-{
-  return ((wxPdfDCImpl*) m_pimpl)->GetMapModeStyle();
-}
-
-static double
-angleByCoords(wxCoord xa, wxCoord ya, wxCoord xc, wxCoord yc)
-{
-  static double pi = 4. * atan(1.0);
-  double diffX = xa - xc, diffY = -(ya - yc), ret = 0;
-  if (diffX == 0) // singularity
-  {
-    ret = diffY > 0 ? 90 : -90;
-  }
-  else if (diffX >= 0) // quadrants 1, 4
-  {
-    ret = (atan(diffY / diffX) * 180.0 / pi);
-  }
-  else // quadrants 2, 3
-  {
-    ret = 180 + (atan(diffY / diffX) * 180.0 / pi);
-  }
-  return ret;
-}
-
-/*
- * PDF device context
- *
- */
-
-IMPLEMENT_ABSTRACT_CLASS(wxPdfDCImpl, wxDCImpl)
-
-wxPdfDCImpl::wxPdfDCImpl(wxPdfDC* owner)
-  : wxDCImpl(owner)
-{
-  Init();
-  m_ok = true;
-}
-
-wxPdfDCImpl::wxPdfDCImpl(wxPdfDC* owner, const wxPrintData& data)
-  : wxDCImpl(owner)
-{
-  Init();
-  SetPrintData(data);
-  m_ok = true;
-}
-
-wxPdfDCImpl::wxPdfDCImpl(wxPdfDC* owner, const wxString& file, int w, int h)
-  : wxDCImpl(owner)
-{
-  Init();
-  m_printData.SetFilename(file);
-  m_ok = true;
-}
-
-wxPdfDCImpl::wxPdfDCImpl(wxPdfDC* owner, wxPdfDocument* pdfDocument, double templateWidth, double templateHeight)
-  : wxDCImpl(owner)
-{
-  Init();
-  m_templateMode = true;
-  m_templateWidth = templateWidth;
-  m_templateHeight = templateHeight;
-  m_pdfDocument = pdfDocument;
-}
-
-wxPdfDCImpl::~wxPdfDCImpl()
-{
-  if (m_pdfDocument != NULL)
-  {
-    if (!m_templateMode)
-    {
-      delete m_pdfDocument;
-    }
-  }
-}
-
-void
-wxPdfDCImpl::Init()
-{
-  m_templateMode = false;
-  m_ppi = 72;
-  m_pdfDocument = NULL;
-  m_imageCount = 0;
-
-  wxScreenDC screendc;
-  m_ppiPdfFont = screendc.GetPPI().GetHeight();
-  m_mappingModeStyle = wxPDF_MAPMODESTYLE_STANDARD;
-
-  SetBackgroundMode(wxSOLID);
-  
-  m_printData.SetOrientation(wxPORTRAIT);
-  m_printData.SetPaperId(wxPAPER_A4);
-  m_printData.SetFilename(wxT("default.pdf"));
-}
-
-wxPdfDocument*
-wxPdfDCImpl::GetPdfDocument()
-{
-  return m_pdfDocument;
-}
-
-void
-wxPdfDCImpl::SetPrintData(const wxPrintData& data)
-{
-  m_printData = data;
-  wxPaperSize id = m_printData.GetPaperId();
-  wxPrintPaperType* paper = wxThePrintPaperDatabase->FindPaperType(id);
-  if (!paper)
-  {
-    m_printData.SetPaperId(wxPAPER_A4);
-  }
-}
-
-void
-wxPdfDCImpl::SetResolution(int ppi)
-{
-  m_ppi = ppi;
-}
-
-int
-wxPdfDCImpl::GetResolution() const
-{
-  return (int) m_ppi;
-}
-
-void
-wxPdfDCImpl::Clear()
-{
-  // Not yet implemented
-}
-
-bool
-wxPdfDCImpl::StartDoc(const wxString& message)
-{
-  wxCHECK_MSG(m_ok, false, wxT("Invalid PDF DC"));
-  wxUnusedVar(message);
-  if (!m_templateMode && m_pdfDocument == NULL)
-  {
-    m_pdfDocument = new wxPdfDocument(m_printData.GetOrientation(), wxString(wxT("pt")), m_printData.GetPaperId());
-    m_pdfDocument->Open();
-    //m_pdfDocument->SetCompression(false);
-    m_pdfDocument->SetAuthor(wxT("wxPdfDC"));
-    m_pdfDocument->SetTitle(wxT("wxPdfDC"));
-
-    SetBrush(*wxBLACK_BRUSH);
-    SetPen(*wxBLACK_PEN);
-    SetBackground(*wxWHITE_BRUSH);
-    SetTextForeground(*wxBLACK);
-    SetDeviceOrigin(0, 0);
-  }
-  return true;
-}
-
-void
-wxPdfDCImpl::EndDoc()
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (!m_templateMode)
-  {
-    m_pdfDocument->SaveAsFile(m_printData.GetFilename());
-    delete m_pdfDocument;
-    m_pdfDocument = NULL;
-  }
-}
-
-void
-wxPdfDCImpl::StartPage()
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (!m_templateMode)
-  {
-    // Begin a new page
-    // Library needs it this way (always landscape) to size the page correctly
-    m_pdfDocument->AddPage(m_printData.GetOrientation());
-    wxPdfLineStyle style = m_pdfDocument->GetLineStyle();
-    style.SetWidth(1.0);
-    style.SetColour(wxPdfColour(0, 0, 0));
-    style.SetLineCap(wxPDF_LINECAP_ROUND);
-    style.SetLineJoin(wxPDF_LINEJOIN_MITER);
-    m_pdfDocument->SetLineStyle(style);
-  }
-}
-
-void
-wxPdfDCImpl::EndPage()
-{
-  if (m_ok)
-  {
-    if (m_clipping)
-    {
-      DestroyClippingRegion();
-    }
-  }
-}
-
-void
-wxPdfDCImpl::SetFont(const wxFont& font)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  m_font = font;
-  if (!font.IsOk())
-  {
-    return;
-  }
-  int styles = wxPDF_FONTSTYLE_REGULAR;
-  if (font.GetWeight() == wxFONTWEIGHT_BOLD)
-  {
-    styles |= wxPDF_FONTSTYLE_BOLD;
-  }
-  if (font.GetStyle() == wxFONTSTYLE_ITALIC)
-  {
-    styles |= wxPDF_FONTSTYLE_ITALIC;
-  }
-  if (font.GetUnderlined())
-  {
-    styles |= wxPDF_FONTSTYLE_UNDERLINE;
-  }
-
-  wxPdfFont regFont = wxPdfFontManager::GetFontManager()->GetFont(font.GetFaceName(), styles);
-  bool ok = regFont.IsValid();
-  if (!ok)
-  {
-    regFont = wxPdfFontManager::GetFontManager()->RegisterFont(font, font.GetFaceName());
-    ok = regFont.IsValid();
-  }
-
-  if (ok)
-  {
-    ok = m_pdfDocument->SetFont(regFont, styles, ScaleFontSizeToPdf(font.GetPointSize()));    
-  }
-}
-
-void
-wxPdfDCImpl::SetPen(const wxPen& pen)
-{
-  if (pen.Ok())
-  {
-    m_pen = pen;
-  }
-}
-
-void
-wxPdfDCImpl::SetBrush(const wxBrush& brush)
-{
-  if (brush.Ok())
-  {
-    m_brush = brush;
-  }
-}
-
-void
-wxPdfDCImpl::SetBackground(const wxBrush& brush)
-{
-  if (brush.Ok())
-  {
-    m_backgroundBrush = brush;
-  }
-}
-
-void
-wxPdfDCImpl::SetBackgroundMode(int mode)
-{
-  // TODO: check implementation
-  m_backgroundMode = (mode == wxTRANSPARENT) ? wxTRANSPARENT : wxSOLID;
-}
-
-void
-wxPdfDCImpl::SetPalette(const wxPalette& palette)
-{
-  // Not yet implemented
-  wxUnusedVar(palette);
-}
-
-void
-wxPdfDCImpl::SetTextForeground(const wxColour& colour)
-{
-  if (colour.IsOk())
-  {
-    m_textForegroundColour = colour;
-  }
-}
-
-void
-wxPdfDCImpl::DestroyClippingRegion()
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (m_clipping)
-  {
-    m_pdfDocument->UnsetClipping();
-    { 
-      wxPen x(GetPen()); SetPen(x);
-    }
-    { 
-      wxBrush x(GetBrush()); SetBrush(x);
-    }
-    {
-      wxFont x(GetFont()); m_pdfDocument->SetFont(x);
-    }
-  }
-  ResetClipping();
-}
-
-wxCoord
-wxPdfDCImpl::GetCharHeight() const
-{
-  // default for 12 point font
-  int height = 18;
-  int width;
-  if (m_font.Ok())
-  {
-    DoGetTextExtent("x", &width, &height);
-  }
-  return height;
-}
-
-wxCoord
-wxPdfDCImpl::GetCharWidth() const
-{
-  int height;
-  int width = 8;
-  if (m_font.Ok())
-  {
-    DoGetTextExtent("x", &width, &height);
-  }
-  return width;
-}
-
-bool
-wxPdfDCImpl::CanDrawBitmap() const
-{
-  return true;
-}
-
-bool
-wxPdfDCImpl::CanGetTextExtent() const
-{
-  return true;
-}
-
-int
-wxPdfDCImpl::GetDepth() const
-{
-  // TODO: check value
-  return 32;
-}
-
-wxSize
-wxPdfDCImpl::GetPPI() const
-{
-  int ppi = (int) m_ppi;
-  return wxSize(ppi,ppi);
-}
-
-void 
-wxPdfDCImpl::ComputeScaleAndOrigin()
-{
-  m_scaleX = m_logicalScaleX * m_userScaleX;
-  m_scaleY = m_logicalScaleY * m_userScaleY;
-}
-
-void
-wxPdfDCImpl::SetMapMode(wxMappingMode mode)
-{
-  m_mappingMode = mode;
-  switch (mode)
-  {
-    case wxMM_TWIPS:
-      SetLogicalScale(m_ppi / 1440.0, m_ppi / 1440.0);
-      break;
-    case wxMM_POINTS:
-      SetLogicalScale(m_ppi / 72.0, m_ppi / 72.0);
-      break;
-    case wxMM_METRIC:
-      SetLogicalScale(m_ppi / 25.4, m_ppi / 25.4);
-      break;
-    case wxMM_LOMETRIC:
-      SetLogicalScale(m_ppi / 254.0, m_ppi / 254.0);
-      break;
-    default:
-    case wxMM_TEXT:
-      SetLogicalScale(1.0, 1.0);
-      break;
-  }
-}
-
-void
-wxPdfDCImpl::SetUserScale(double x, double y)
-{
-  m_userScaleX = x;
-  m_userScaleY = y;
-  ComputeScaleAndOrigin();
-}
-
-void
-wxPdfDCImpl::SetLogicalScale(double x, double y)
-{
-  m_logicalScaleX = x;
-  m_logicalScaleY = y;
-  ComputeScaleAndOrigin();
-}
-
-void
-wxPdfDCImpl::SetLogicalOrigin(wxCoord x, wxCoord y)
-{
-  m_logicalOriginX = x * m_signX;
-  m_logicalOriginY = y * m_signY;
-  ComputeScaleAndOrigin();
-}
-
-void
-wxPdfDCImpl::SetDeviceOrigin(wxCoord x, wxCoord y)
-{
-  m_deviceOriginX = x;
-  m_deviceOriginY = y;
-  ComputeScaleAndOrigin();
-}
-
-void
-wxPdfDCImpl::SetAxisOrientation(bool xLeftRight, bool yBottomUp)
-{
-  m_signX = (xLeftRight ?  1 : -1);
-  m_signY = (yBottomUp  ? -1 :  1);
-  ComputeScaleAndOrigin();
-}
-
-void
-wxPdfDCImpl::SetLogicalFunction(wxRasterOperationMode function)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  // TODO: check implementation
-  m_logicalFunction = function;
-  switch(function)
-  {
-    case wxAND:
-      m_pdfDocument->SetAlpha(0.5, 0.5);
-      break;
-    case wxCOPY:
-    default:
-      m_pdfDocument->SetAlpha(1.0, 1.0);
-      break;
-  }
-}
-
-// the true implementations
-
-bool
-wxPdfDCImpl::DoFloodFill(wxCoord x, wxCoord y, const wxColour& col, wxFloodFillStyle style)
-{
-  wxUnusedVar(x);
-  wxUnusedVar(y);
-  wxUnusedVar(col);
-  wxUnusedVar(style);
-  wxFAIL_MSG(wxString(wxT("wxPdfDCImpl::FloodFill: "))+_("Not implemented."));
-  return false;
-}
-
-void
-wxPdfDCImpl::DoGradientFillLinear(const wxRect& rect,
-                              const wxColour& initialColour,
-                              const wxColour& destColour,
-                              wxDirection nDirection)
-{
-  // TODO: native implementation
-  wxDCImpl::DoGradientFillLinear(rect, initialColour, destColour, nDirection);
-}
-
-void
-wxPdfDCImpl::DoGradientFillConcentric(const wxRect& rect,
-                                  const wxColour& initialColour,
-                                  const wxColour& destColour,
-                                  const wxPoint& circleCenter)
-{
-  // TODO: native implementation
-  wxDCImpl::DoGradientFillConcentric(rect, initialColour, destColour, circleCenter);
-}
-
-bool
-wxPdfDCImpl::DoGetPixel(wxCoord x, wxCoord y, wxColour* col) const
-{
-  wxUnusedVar(x);
-  wxUnusedVar(y);
-  wxUnusedVar(col);
-  wxFAIL_MSG(wxString(wxT("wxPdfDCImpl::DoGetPixel: "))+_("Not implemented."));
-  return false;
-}
-
-void
-wxPdfDCImpl::DoDrawPoint(wxCoord x, wxCoord y)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupPen();
-  double xx = ScaleLogicalToPdfX(x);
-  double yy = ScaleLogicalToPdfY(y);
-  m_pdfDocument->SetFillColour(m_pdfDocument->GetDrawColour());
-  m_pdfDocument->Rect(xx-0.5, yy-0.5, xx+0.5, yy+0.5);
-  CalcBoundingBox(x, y);
-}
-
-#if wxUSE_SPLINES
-void
-wxPdfDCImpl::DoDrawSpline(wxList* points)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetPen( m_pen );
-  wxASSERT_MSG( points, wxT("NULL pointer to spline points?") );
-  const size_t n_points = points->GetCount();
-  wxASSERT_MSG( n_points > 2 , wxT("incomplete list of spline points?") );
-#if 0
-  wxPoint* p;
-  wxPdfArrayDouble xp, yp;
-  wxList::compatibility_iterator node = points->GetFirst();
-  while (node)
-  {
-    p = (wxPoint *)node->GetData();
-    xp.Add(ScaleLogicalToPdfX(p->x));
-    yp.Add(ScaleLogicalToPdfY(p->y));
-    node = node->GetNext();
-  }
-  m_pdfDocument->BezierSpline(xp, yp, wxPDF_STYLE_DRAW);
-#endif
-
-  // Code taken from wxDC MSW implementation
-  // quadratic b-spline to cubic bezier spline conversion
-  //
-  // quadratic spline with control points P0,P1,P2
-  // P(s) = P0*(1-s)^2 + P1*2*(1-s)*s + P2*s^2
-  //
-  // bezier spline with control points B0,B1,B2,B3
-  // B(s) = B0*(1-s)^3 + B1*3*(1-s)^2*s + B2*3*(1-s)*s^2 + B3*s^3
-  //
-  // control points of bezier spline calculated from b-spline
-  // B0 = P0
-  // B1 = (2*P1 + P0)/3
-  // B2 = (2*P1 + P2)/3
-  // B3 = P2
-
-  double x1, y1, x2, y2, cx1, cy1, cx4, cy4;
-  double bx1, by1, bx2, by2, bx3, by3;
-
-  wxList::compatibility_iterator node = points->GetFirst();
-  wxPoint* p = (wxPoint*) node->GetData();
-
-  x1 = ScaleLogicalToPdfX(p->x);
-  y1 = ScaleLogicalToPdfY(p->y);
-  m_pdfDocument->MoveTo(x1, y1);
-
-  node = node->GetNext();
-  p = (wxPoint*) node->GetData();
-
-  bx1 = x2 = ScaleLogicalToPdfX(p->x);
-  by1 = y2 = ScaleLogicalToPdfY(p->y);
-  cx1 = ( x1 + x2 ) / 2;
-  cy1 = ( y1 + y2 ) / 2;
-  bx3 = bx2 = cx1;
-  by3 = by2 = cy1;
-  m_pdfDocument->CurveTo(bx1, by1, bx2, by2, bx3, by3);
-
-#if !wxUSE_STL
-  while ((node = node->GetNext()) != NULL)
-#else
-  while ((node = node->GetNext()))
-#endif // !wxUSE_STL
-  {
-    p = (wxPoint*) node->GetData();
-    x1 = x2;
-    y1 = y2;
-    x2 = ScaleLogicalToPdfX(p->x);
-    y2 = ScaleLogicalToPdfY(p->y);
-    cx4 = (x1 + x2) / 2;
-    cy4 = (y1 + y2) / 2;
-    // B0 is B3 of previous segment
-    // B1:
-    bx1 = (x1*2+cx1)/3;
-    by1 = (y1*2+cy1)/3;
-    // B2:
-    bx2 = (x1*2+cx4)/3;
-    by2 = (y1*2+cy4)/3;
-    // B3:
-    bx3 = cx4;
-    by3 = cy4;
-    cx1 = cx4;
-    cy1 = cy4;
-    m_pdfDocument->CurveTo(bx1, by1, bx2, by2, bx3, by3);
-  }
-
-  bx1 = bx3;
-  by1 = by3;
-  bx3 = bx2 = x2;
-  by3 = by2 = y2;
-  m_pdfDocument->CurveTo(bx1, by1, bx2, by2, bx3, by3);
-  m_pdfDocument->EndPath(wxPDF_STYLE_DRAW);
-}
-#endif
-
-void
-wxPdfDCImpl::DoDrawLine(wxCoord x1, wxCoord y1, wxCoord x2, wxCoord y2)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if  (m_pen.GetStyle() != wxTRANSPARENT)
-  {
-    SetupBrush();
-    SetupPen();
-    m_pdfDocument->Line(ScaleLogicalToPdfX(x1), ScaleLogicalToPdfY(y1), 
-                        ScaleLogicalToPdfX(x2), ScaleLogicalToPdfY(y2));
-    CalcBoundingBox(x1, y1);
-    CalcBoundingBox(x2, y2);
-  }
-}
-
-void
-wxPdfDCImpl::DoDrawArc(wxCoord x1, wxCoord y1,
-                       wxCoord x2, wxCoord y2,
-                       wxCoord xc, wxCoord yc)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupBrush();
-  SetupPen();
-  const wxBrush& curBrush = GetBrush();
-  const wxPen& curPen = GetPen();
-  bool doFill = (curBrush != wxNullBrush) && curBrush.GetStyle() != wxTRANSPARENT;
-  bool doDraw = (curPen != wxNullPen) && curPen.GetStyle() != wxTRANSPARENT;
-  if (doDraw || doFill)
-  {
-    double xx1 = x1;
-    double yy1 = y1;
-    double xx2 = x2;
-    double yy2 = y2;
-    double xxc = xc;
-    double yyc = yc;
-    double start = angleByCoords(xx1, yy1, xxc, yyc);
-    double end   = angleByCoords(xx2, yy2, xxc, yyc);
-    xx1 = ScaleLogicalToPdfX(xx1);
-    yy1 = ScaleLogicalToPdfY(yy1);
-    xx2 = ScaleLogicalToPdfX(xx2);
-    yy2 = ScaleLogicalToPdfY(yy2);
-    xxc = ScaleLogicalToPdfX(xxc);
-    yyc = ScaleLogicalToPdfY(yyc);
-    double rx = xx1 - xxc;
-    double ry = yy1 - yyc;
-    double r = sqrt(rx * rx + ry * ry);
-    int style = wxPDF_STYLE_FILLDRAW;
-    if (!(doDraw && doFill))
-    {
-      style = (doFill) ? wxPDF_STYLE_FILL : wxPDF_STYLE_DRAW;
-    }
-    m_pdfDocument->Ellipse(xxc, yyc, r, 0, 0, start, end, style, 8, false);
-    wxCoord radius = (wxCoord) sqrt( (double)((x1-xc)*(x1-xc)+(y1-yc)*(y1-yc)) );
-    CalcBoundingBox(xc-radius, yc-radius);
-    CalcBoundingBox(xc+radius, yc+radius);
-  }
-}
-
-void
-wxPdfDCImpl::DoDrawCheckMark(wxCoord x, wxCoord y,
-                             wxCoord width, wxCoord height)
-{
-  // TODO: native implementation?
-  wxDCImpl::DoDrawCheckMark(x, y, width, height);
-}
-
-void
-wxPdfDCImpl::DoDrawEllipticArc(wxCoord x, wxCoord y, wxCoord width, wxCoord height,
-                               double sa, double ea)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (sa >= 360 || sa <= -360)
-  {
-    sa -= int(sa/360)*360;
-  }
-  if (ea >= 360 || ea <=- 360)
-  {
-    ea -= int(ea/360)*360;
-  }
-  if (sa < 0)
-  {
-    sa += 360;
-  }
-  if (ea < 0)
-  {
-    ea += 360;
-  }
-  if (wxIsSameDouble(sa, ea))
-  {
-    DoDrawEllipse(x, y, width, height);
-  }
-  else
-  {
-    SetupBrush();
-    SetupPen();
-    const wxBrush& curBrush = GetBrush();
-    const wxPen& curPen = GetPen();
-    bool doFill = (curBrush != wxNullBrush) && curBrush.GetStyle() != wxTRANSPARENT;
-    bool doDraw = (curPen != wxNullPen) && curPen.GetStyle() != wxTRANSPARENT;
-    if (doDraw || doFill)
-    {
-      m_pdfDocument->SetLineWidth(ScaleLogicalToPdfXRel(1)); // pen width != 1 sometimes fools readers when closing paths
-      int style = wxPDF_STYLE_FILL | wxPDF_STYLE_DRAWCLOSE;
-      if (!(doDraw && doFill))
-      {
-        style = (doFill) ? wxPDF_STYLE_FILL : wxPDF_STYLE_DRAWCLOSE;
-      }
-      m_pdfDocument->Ellipse(ScaleLogicalToPdfX(x + 0.5 * width), 
-                             ScaleLogicalToPdfY(y + 0.5 * height),
-                             ScaleLogicalToPdfXRel(0.5 * width), 
-                             ScaleLogicalToPdfYRel(0.5 * height), 
-                             0, sa, ea, style, 8, true);
-      CalcBoundingBox(x, y);
-      CalcBoundingBox(x+width, y+height);
-    }
-  }
-}
-
-void
-wxPdfDCImpl::DoDrawRectangle(wxCoord x, wxCoord y, wxCoord width, wxCoord height)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupBrush();
-  SetupPen();
-  m_pdfDocument->Rect(ScaleLogicalToPdfX(x), ScaleLogicalToPdfY(y),
-                      ScaleLogicalToPdfXRel(width), ScaleLogicalToPdfYRel(height), 
-                      GetDrawingStyle()); 
-  CalcBoundingBox(x, y);
-  CalcBoundingBox(x+width, y+height);
-}
-
-void
-wxPdfDCImpl::DoDrawRoundedRectangle(wxCoord x, wxCoord y,
-                                    wxCoord width, wxCoord height,
-                                    double radius)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (radius < 0.0)
-  {
-    // Now, a negative radius is interpreted to mean
-    // 'the proportion of the smallest X or Y dimension'
-    double smallest = width < height ? width : height;
-    radius =  (-radius * smallest);
-  }
-  SetupBrush();
-  SetupPen();
-  m_pdfDocument->RoundedRect(ScaleLogicalToPdfX(x), ScaleLogicalToPdfY(y), 
-                             ScaleLogicalToPdfXRel(width), ScaleLogicalToPdfYRel(height), 
-                             ScaleLogicalToPdfXRel(radius), wxPDF_CORNER_ALL, GetDrawingStyle());  
-  CalcBoundingBox(x, y);
-  CalcBoundingBox(x+width, y+height);
-}
-
-void
-wxPdfDCImpl::DoDrawEllipse(wxCoord x, wxCoord y, wxCoord width, wxCoord height)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupBrush();
-  SetupPen();
-  m_pdfDocument->Ellipse(ScaleLogicalToPdfX(x + width / 2.0), 
-                         ScaleLogicalToPdfY(y + height / 2.0), 
-                         ScaleLogicalToPdfXRel(width / 2.0), 
-                         ScaleLogicalToPdfYRel(height / 2.0), 
-                         0, 0, 360, GetDrawingStyle()); 
-  CalcBoundingBox(x-width, y-height);
-  CalcBoundingBox(x+width, y+height);
-}
-
-void
-wxPdfDCImpl::DoCrossHair(wxCoord x, wxCoord y)
-{
-  wxUnusedVar(x);
-  wxUnusedVar(y);
-  wxFAIL_MSG(wxString(wxT("wxPdfDCImpl::DoCrossHair: "))+_("Not implemented."));
-}
-
-void
-wxPdfDCImpl::DoDrawIcon(const wxIcon& icon, wxCoord x, wxCoord y)
-{
-  DoDrawBitmap(icon, x, y, true);
-}
-
-void
-wxPdfDCImpl::DoDrawBitmap(const wxBitmap& bitmap, wxCoord x, wxCoord y, bool useMask)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  wxCHECK_RET( IsOk(), wxT("wxPdfDCImpl::DoDrawBitmap - invalid DC") );
-  wxCHECK_RET( bitmap.Ok(), wxT("wxPdfDCImpl::DoDrawBitmap - invalid bitmap") );
-
-  if (!bitmap.Ok()) return;
-
-  int idMask = 0;
-  wxImage image = bitmap.ConvertToImage();
-  if (!image.Ok()) return;
-
-  if (!useMask)
-  {
-    image.SetMask(false);
-  }
-  wxCoord w = image.GetWidth();
-  wxCoord h = image.GetHeight();
-
-  wxCoord ww = ScaleLogicalToPdfXRel(w);
-  wxCoord hh = ScaleLogicalToPdfYRel(h);
-
-  wxCoord xx = ScaleLogicalToPdfX(x);
-  wxCoord yy = ScaleLogicalToPdfY(y);
-
-  wxString imgName = wxString::Format(wxT("pdfdcimg%d"), ++m_imageCount);
-
-  if (bitmap.GetDepth() == 1)
-  {
-    wxPen savePen = m_pen;
-    wxBrush saveBrush = m_brush;
-    SetPen(*wxTRANSPARENT_PEN);
-    SetBrush(wxBrush(m_textBackgroundColour, wxSOLID));
-    DoDrawRectangle(xx, yy, ww, hh);        
-    SetBrush(wxBrush(m_textForegroundColour, wxSOLID));
-    m_pdfDocument->Image(imgName, image, xx, yy, ww, hh, wxPdfLink(-1), idMask);
-    SetBrush(saveBrush);
-    SetPen(savePen);
-  }
-  else
-  {
-    m_pdfDocument->Image(imgName, image, xx, yy, ww, hh, wxPdfLink(-1), idMask);
-  }
-}
-
-void
-wxPdfDCImpl::DoDrawText(const wxString& text, wxCoord x, wxCoord y)
-{
-  DoDrawRotatedText(text, x, y, 0.0);
-}
-
-void
-wxPdfDCImpl::DoDrawRotatedText(const wxString& text, wxCoord x, wxCoord y, double angle)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-
-  wxFont* fontToUse = &m_font;
-  if (!fontToUse->IsOk())
-  {
-    return;
-  }
-  wxFont old = m_font; 
-
-  wxPdfFontDescription desc = m_pdfDocument->GetFontDescription();
-  int height, descent;
-  CalculateFontMetrics(&desc, fontToUse->GetPointSize(), &height, NULL, &descent, NULL);
-  if (m_mappingModeStyle != wxPDF_MAPMODESTYLE_PDF)
-  {
-    y += (height - abs(descent));
-  }
-
-  m_pdfDocument->SetTextColour(m_textForegroundColour.Red(), m_textForegroundColour.Green(), m_textForegroundColour.Blue());
-  m_pdfDocument->SetFontSize(ScaleFontSizeToPdf(fontToUse->GetPointSize()));
-  m_pdfDocument->RotatedText(ScaleLogicalToPdfX(x), ScaleLogicalToPdfY(y), text, angle);
-  SetFont(old);
-}
-
-bool
-wxPdfDCImpl::DoBlit(wxCoord xdest, wxCoord ydest, wxCoord width, wxCoord height,
-                    wxDC* source, wxCoord xsrc, wxCoord ysrc,
-                    wxRasterOperationMode rop /*= wxCOPY*/, bool useMask /*= false*/, 
-                    wxCoord xsrcMask /*= -1*/, wxCoord ysrcMask /*= -1*/)
-{
-//  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  wxCHECK_MSG( IsOk(), false, wxT("wxPdfDCImpl::DoBlit - invalid DC") );
-  wxCHECK_MSG( source->IsOk(), false, wxT("wxPdfDCImpl::DoBlit - invalid source DC") );
-
-  wxUnusedVar(useMask);
-  wxUnusedVar(xsrcMask);
-  wxUnusedVar(ysrcMask);
-
-  // blit into a bitmap
-  wxBitmap bitmap((int)width, (int)height);
-  wxMemoryDC memDC;
-  memDC.SelectObject(bitmap);
-  memDC.Blit(0, 0, width, height, source, xsrc, ysrc, rop);
-  memDC.SelectObject(wxNullBitmap);
-
-  // draw bitmap. scaling and positioning is done there
-  DoDrawBitmap( bitmap, xdest, ydest );
-
-  return true;
-}
-
-void
-wxPdfDCImpl::DoGetSize(int* width, int* height) const
-{
-  int w;
-  int h;
-  if (m_templateMode)
-  {
-    w = wxRound(m_templateWidth * m_pdfDocument->GetScaleFactor());
-    h = wxRound(m_templateHeight * m_pdfDocument->GetScaleFactor());
-  }
-  else
-  {
-    wxPaperSize id = m_printData.GetPaperId();
-    wxPrintPaperType *paper = wxThePrintPaperDatabase->FindPaperType(id);
-    if (!paper) paper = wxThePrintPaperDatabase->FindPaperType(wxPAPER_A4);
-
-    w = 595;
-    h = 842;
-    if (paper)
-    {
-      w = paper->GetSizeDeviceUnits().x;
-      h = paper->GetSizeDeviceUnits().y;
-    }
-
-    if (m_printData.GetOrientation() == wxLANDSCAPE)
-    {
-      int tmp = w;
-      w = h;
-      h = tmp;
-    }
-  }
-
-  if (width)
-  {
-    *width = wxRound( w * m_ppi / 72.0 );
-  }
-
-  if (height)
-  {
-    *height = wxRound( h * m_ppi / 72.0 );
-  }
-}
-
-void
-wxPdfDCImpl::DoGetSizeMM(int* width, int* height) const
-{
-  int w;
-  int h;
-  if (m_templateMode)
-  {
-    w = wxRound(m_templateWidth * m_pdfDocument->GetScaleFactor() * 25.4/72.0);
-    h = wxRound(m_templateHeight * m_pdfDocument->GetScaleFactor() * 25.4/72.0);
-  }
-  else
-  {
-    wxPaperSize id = m_printData.GetPaperId();
-    wxPrintPaperType *paper = wxThePrintPaperDatabase->FindPaperType(id);
-    if (!paper) paper = wxThePrintPaperDatabase->FindPaperType(wxPAPER_A4);
-
-    w = 210;
-    h = 297;
-    if (paper)
-    {
-      w = paper->GetWidth() / 10;
-      h = paper->GetHeight() / 10;
-    }
-
-    if (m_printData.GetOrientation() == wxLANDSCAPE)
-    {
-      int tmp = w;
-      w = h;
-      h = tmp;
-    }
-  }
-  if (width)
-  {
-    *width = w;
-  }
-  if (height)
-  {
-    *height = h;
-  }
-}
-
-void
-wxPdfDCImpl::DoDrawLines(int n, wxPoint points[], wxCoord xoffset, wxCoord yoffset)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupPen();
-  int i;
-  for (i = 0; i < n; ++i)
-  {
-    wxPoint& point = points[i];
-    double xx = ScaleLogicalToPdfX(xoffset + point.x);
-    double yy = ScaleLogicalToPdfY(yoffset + point.y);
-    CalcBoundingBox(point.x+xoffset, point.y+yoffset);
-    if (i == 0)
-    {
-      m_pdfDocument->MoveTo(xx, yy);
-    }
-    else
-    {
-      m_pdfDocument->LineTo(xx, yy);
-    }
-  }
-  m_pdfDocument->EndPath(wxPDF_STYLE_DRAW);
-}
-
-void
-wxPdfDCImpl::DoDrawPolygon(int n, wxPoint points[],
-                           wxCoord xoffset, wxCoord yoffset,
-                           wxPolygonFillMode fillStyle /* = wxODDEVEN_RULE*/)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  SetupBrush();
-  SetupPen();
-  wxPdfArrayDouble xp;
-  wxPdfArrayDouble yp;
-  int i;
-  for (i = 0; i < n; ++i)
-  {
-    wxPoint& point = points[i];
-    xp.Add(ScaleLogicalToPdfX(xoffset + point.x));
-    yp.Add(ScaleLogicalToPdfY(yoffset + point.y));
-    CalcBoundingBox(point.x + xoffset, point.y + yoffset);
-  }
-  int saveFillingRule = m_pdfDocument->GetFillingRule();
-  m_pdfDocument->SetFillingRule(fillStyle);
-  int style = GetDrawingStyle();
-  m_pdfDocument->Polygon(xp, yp, style);
-  m_pdfDocument->SetFillingRule(saveFillingRule);
-}
-
-void
-wxPdfDCImpl::DoDrawPolyPolygon(int n, int count[], wxPoint points[],
-                               wxCoord xoffset, wxCoord yoffset,
-                               int fillStyle)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (n > 0)
-  {
-    SetupBrush();
-    SetupPen();
-    int style = GetDrawingStyle();
-    int saveFillingRule = m_pdfDocument->GetFillingRule();
-    m_pdfDocument->SetFillingRule(fillStyle);
-
-    int ofs = 0;
-    int i, j;
-    for (j = 0; j < n; ofs += count[j++])
-    {
-      wxPdfArrayDouble xp;
-      wxPdfArrayDouble yp;
-      for (i = 0; i < count[j]; ++i)
-      {
-        wxPoint& point = points[ofs+i];
-        xp.Add(ScaleLogicalToPdfX(xoffset + point.x));
-        yp.Add(ScaleLogicalToPdfY(yoffset + point.y));
-        CalcBoundingBox(point.x + xoffset, point.y + yoffset);
-      }
-      m_pdfDocument->Polygon(xp, yp, style);
-    }
-    m_pdfDocument->SetFillingRule(saveFillingRule);
-  }
-}
-
-void
-wxPdfDCImpl::DoSetClippingRegionAsRegion(const wxRegion& region)
-{
-  wxCoord x, y, w, h;
-  region.GetBox(x, y, w, h);
-  DoSetClippingRegion(x, y, w, h);
-}
-
-void
-wxPdfDCImpl::DoSetClippingRegion(wxCoord x, wxCoord y, wxCoord width, wxCoord height)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  if (m_clipping)
-  {
-    DestroyClippingRegion();
-  }
-
-  m_clipX1 = (int) x;
-  m_clipY1 = (int) y;
-  m_clipX2 = (int) (x + width);
-  m_clipY2 = (int) (y + height);
-
-  // Use the current path as a clipping region
-  m_pdfDocument->ClippingRect(ScaleLogicalToPdfX(x), 
-                              ScaleLogicalToPdfY(y), 
-                              ScaleLogicalToPdfXRel(width), 
-                              ScaleLogicalToPdfYRel(height));
-  m_clipping = true;
-}
-
-void
-wxPdfDCImpl::DoSetDeviceClippingRegion(const wxRegion& region)
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  wxCoord x, y, w, h;
-  region.GetBox(x, y, w, h);
-  DoSetClippingRegion(DeviceToLogicalX(x), DeviceToLogicalY(y), DeviceToLogicalXRel(w), DeviceToLogicalYRel(h));
-}
-
-void
-wxPdfDCImpl::DoGetTextExtent(const wxString& text,
-                         wxCoord* x, wxCoord* y,
-                         wxCoord* descent,
-                         wxCoord* externalLeading,
-                         const wxFont* theFont) const
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-
-  const wxFont* fontToUse = theFont;
-  if (!fontToUse)
-  {
-    fontToUse = const_cast<wxFont*>(&m_font);
-  }
-
-  if (fontToUse)
-  {
-    wxFont old = m_font;
-    
-    const_cast<wxPdfDCImpl*>(this)->SetFont(*fontToUse);
-    wxPdfFontDescription desc = const_cast<wxPdfDCImpl*>(this)->m_pdfDocument->GetFontDescription();
-    int myAscent, myDescent, myHeight, myExtLeading;
-    CalculateFontMetrics(&desc, fontToUse->GetPointSize(), &myHeight, &myAscent, &myDescent, &myExtLeading);
-
-    if (descent)
-    {
-      *descent = abs(myDescent);
-    }
-    if( externalLeading )
-    {
-      *externalLeading = myExtLeading;
-    }
-    *x = ScalePdfToFontMetric((double)const_cast<wxPdfDCImpl*>(this)->m_pdfDocument->GetStringWidth(text));
-    *y = myHeight;
-    const_cast<wxPdfDCImpl*>(this)->SetFont(old);
-  }
-  else
-  {
-    *x = *y = 0;
-    if (descent)
-    {
-      *descent = 0;
-    }
-    if (externalLeading)
-    {
-      *externalLeading = 0;
-    }
-  }
-}
-
-bool
-wxPdfDCImpl::DoGetPartialTextExtents(const wxString& text, wxArrayInt& widths) const
-{
-  wxCHECK_MSG( m_pdfDocument, false, wxT("wxPdfDCImpl::DoGetPartialTextExtents - invalid DC") );
-    
-  /// very slow - but correct ??
-    
-  const size_t len = text.length();
-  if (len == 0)
-  {
-    return true;
-  }
-    
-  widths.Empty();
-  widths.Add(0, len);
-  int w, h;
-    
-  wxString buffer;
-  buffer.Alloc(len);
-
-  for ( size_t i = 0; i < len; ++i )
-  {
-    buffer.Append(text.Mid( i, 1));
-    DoGetTextExtent(buffer, &w, &h);
-    widths[i] = w;
-  }
-
-  buffer.Clear();
-  return true;
-}
-
-void
-wxPdfDCImpl::SetupPen()
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  // pen
-  const wxPen& curPen = GetPen();
-  if (curPen != wxNullPen)
-  {
-    wxPdfLineStyle style = m_pdfDocument->GetLineStyle();
-    wxPdfArrayDouble dash;
-    style.SetColour(wxColour(curPen.GetColour().Red(),
-                             curPen.GetColour().Green(),
-                             curPen.GetColour().Blue()));
-    if (curPen.GetWidth())
-    {
-      style.SetWidth(ScaleLogicalToPdfXRel(curPen.GetWidth()));
-    }
-    switch (curPen.GetStyle())
-    {
-      case wxDOT:
-        dash.Add(1);
-        dash.Add(1);
-        style.SetDash(dash);
-        break;
-      case wxLONG_DASH:
-        dash.Add(4);
-        dash.Add(4);
-        style.SetDash(dash);
-        break;
-      case wxSHORT_DASH:
-        dash.Add(2);
-        dash.Add(2);
-        style.SetDash(dash);
-        break;
-      case wxDOT_DASH:
-        {
-          dash.Add(1);
-          dash.Add(1);
-          dash.Add(4);
-          dash.Add(1);
-          style.SetDash(dash);
-        }
-        break;
-      case wxSOLID:
-      default:
-        style.SetDash(dash);
-        break;
-    }
-    m_pdfDocument->SetLineStyle(style);
-  }
-  else
-  {
-    m_pdfDocument->SetDrawColour(0, 0, 0);
-    m_pdfDocument->SetLineWidth(ScaleLogicalToPdfXRel(1.0));
-  }
-}
-
-void
-wxPdfDCImpl::SetupBrush()
-{
-  wxCHECK_RET(m_pdfDocument, wxT("Invalid PDF DC"));
-  // brush
-  const wxBrush& curBrush = GetBrush();
-  if (curBrush != wxNullBrush)
-  {
-    m_pdfDocument->SetFillColour(curBrush.GetColour().Red(), curBrush.GetColour().Green(), curBrush.GetColour().Blue());
-  }
-  else
-  {
-    m_pdfDocument->SetFillColour(0, 0, 0);
-  }
-}
-
-// Get the current drawing style based on the current brush and pen
-int
-wxPdfDCImpl::GetDrawingStyle()
-{
-  int style = wxPDF_STYLE_NOOP;
-  const wxBrush &curBrush = GetBrush();
-  bool do_brush = (curBrush != wxNullBrush) && curBrush.GetStyle() != wxTRANSPARENT;
-  const wxPen &curPen = GetPen();
-  bool do_pen = (curPen != wxNullPen) && curPen.GetWidth() && curPen.GetStyle() != wxTRANSPARENT;
-  if (do_brush && do_pen)
-  {
-    style = wxPDF_STYLE_FILLDRAW;
-  }
-  else if (do_pen)
-  {
-    style = wxPDF_STYLE_DRAW;
-  }
-  else if (do_brush)
-  {
-    style = wxPDF_STYLE_FILL;  
-  }
-  return style;
-}
-
-double
-wxPdfDCImpl::ScaleLogicalToPdfX(wxCoord x) const
-{
-  double docScale = 72.0 / (m_ppi * m_pdfDocument->GetScaleFactor());
-  return docScale * (((double)((x - m_logicalOriginX) * m_signX) * m_scaleX) +
-         m_deviceOriginX + m_deviceLocalOriginX);
-}
-
-double
-wxPdfDCImpl::ScaleLogicalToPdfXRel(wxCoord x) const
-{
-  double docScale = 72.0 / (m_ppi * m_pdfDocument->GetScaleFactor());
-  return (double)(x) * m_scaleX * docScale;
-}
-
-double
-wxPdfDCImpl::ScaleLogicalToPdfY(wxCoord y) const
-{
-  double docScale = 72.0 / (m_ppi * m_pdfDocument->GetScaleFactor());
-  return docScale * (((double)((y - m_logicalOriginY) * m_signY) * m_scaleY) + 
-         m_deviceOriginY + m_deviceLocalOriginY);
-}
- 
-double
-wxPdfDCImpl::ScaleLogicalToPdfYRel(wxCoord y) const
-{
-  double docScale = 72.0 / (m_ppi * m_pdfDocument->GetScaleFactor());
-  return (double)(y) * m_scaleY * docScale;
-}
-
-double
-wxPdfDCImpl::ScaleFontSizeToPdf(int pointSize) const
-{
-  double fontScale;
-  double rval;
-  switch (m_mappingModeStyle)
-  {
-    case wxPDF_MAPMODESTYLE_MSW:
-      // as implemented in wxMSW
-      fontScale = (m_ppiPdfFont / m_ppi);
-      rval = (double) pointSize * fontScale * m_scaleY;
-      break;
-    case wxPDF_MAPMODESTYLE_GTK:
-      // as implemented in wxGTK / wxMAC / wxOSX
-      fontScale = (m_ppiPdfFont / m_ppi);
-      rval = (double) pointSize * fontScale * m_userScaleY;
-      break;
-    case wxPDF_MAPMODESTYLE_MAC:
-      // as implemented in wxGTK / wxMAC / wxOSX
-      fontScale = (m_ppiPdfFont / m_ppi);
-      rval = (double) pointSize * fontScale * m_userScaleY;
-      break;
-    case wxPDF_MAPMODESTYLE_PDF:
-      // an implementation where a font size of 12 gets a 12 point font if the
-      // mapping mode is wxMM_POINTS and suitable scaled for other modes
-      fontScale = (m_mappingMode == wxMM_TEXT) ? (m_ppiPdfFont / m_ppi) : (72.0 / m_ppi);
-      rval = (double) pointSize * fontScale * m_scaleY;
-      break;
-    default:
-      // standard and fall through
-#if defined( __WXMSW__)
-      fontScale = (m_ppiPdfFont / m_ppi);
-      rval = (double) pointSize * fontScale * m_scaleY;
-#else
-      fontScale = (m_ppiPdfFont / m_ppi);
-      rval = (double) pointSize * fontScale * m_userScaleY;
-#endif
-      break;
-  }
-  return rval;
-}
-
-int
-wxPdfDCImpl::ScalePdfToFontMetric( double metric ) const
-{
-  double fontScale = (72.0 / m_ppi) / (double)m_pdfDocument->GetScaleFactor();
-  return wxRound(((metric * m_signY) / m_scaleY ) / fontScale);
-}
-
-#endif // 0 (wxPdfDC implementations
 
 #endif // wxUSE_GRAPHICS_CONTEXT
