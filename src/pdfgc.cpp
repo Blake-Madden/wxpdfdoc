@@ -1140,8 +1140,69 @@ wxPdfGraphicsPathData::AddRoundedRectangle(wxDouble x, wxDouble y, wxDouble w, w
 void
 wxPdfGraphicsPathData::AddArcToPoint(wxDouble x1, wxDouble y1, wxDouble x2, wxDouble y2, wxDouble r)
 {
-  // TODO: Implement AddArcToPoint
-  wxFAIL_MSG("AddArcToPoint not yet implemented");
+  if (!m_hasCurrent)
+  {
+    MoveToPoint(x1, y1);
+    return;
+  }
+
+  const double x0 = m_currentX;
+  const double y0 = m_currentY;
+
+  if (r <= 0)
+  {
+    AddLineToPoint(x1, y1);
+    return;
+  }
+
+  double dx0 = x0 - x1;
+  double dy0 = y0 - y1;
+  double dx2 = x2 - x1;
+  double dy2 = y2 - y1;
+
+  double len0 = sqrt(dx0 * dx0 + dy0 * dy0);
+  double len2 = sqrt(dx2 * dx2 + dy2 * dy2);
+
+  if (len0 < 1e-10 || len2 < 1e-10)
+  {
+    AddLineToPoint(x1, y1);
+    return;
+  }
+
+  dx0 /= len0; dy0 /= len0;
+  dx2 /= len2; dy2 /= len2;
+
+  double cosAlpha = dx0 * dx2 + dy0 * dy2;
+
+  if (cosAlpha > 0.999999 || cosAlpha < -0.999999)
+  {
+    AddLineToPoint(x1, y1);
+    return;
+  }
+
+  double alpha = acos(cosAlpha);
+  double d = r / tan(alpha / 2.0);
+
+  double bx = dx0 + dx2;
+  double by = dy0 + dy2;
+  double blen = sqrt(bx * bx + by * by);
+  bx /= blen; by /= blen;
+
+  double h = r / sin(alpha / 2.0);
+  double cx = x1 + h * bx;
+  double cy = y1 + h * by;
+
+  double tx1 = x1 + d * dx0;
+  double ty1 = y1 + d * dy0;
+  double tx2 = x1 + d * dx2;
+  double ty2 = y1 + d * dy2;
+
+  double startAngle = atan2(ty1 - cy, tx1 - cx);
+  double endAngle = atan2(ty2 - cy, tx2 - cx);
+
+  bool clockwise = (dx0 * dy2 - dy0 * dx2) < 0;
+
+  AddArc(cx, cy, r, startAngle, endAngle, clockwise);
 }
 
 void
