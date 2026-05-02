@@ -67,6 +67,7 @@ public:
   virtual void Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h) wxOVERRIDE;
 
   /// PDF-specific clip that takes a native shape.
+  /// @param shape The shape to clip the drawing context to.
   void Clip(const wxPdfShape& shape);
 
   virtual void ResetClip() wxOVERRIDE;
@@ -141,16 +142,29 @@ public:
 #endif
 
   // PDF-specific accessors --------------------------------------------------
-
+  
   /// Returns the underlying PDF document. May be NULL until StartDoc().
+  /// @return A pointer to the underlying wxPdfDocument instance.
   wxPdfDocument* GetPdfDocument() { return m_pdfDocument; }
 
   // Track line / fill alpha so that pen and brush Apply()s can update one
   // side without clobbering the other. Both default to 1.0 (fully opaque).
   // Setting either pushes the combined value to wxPdfDocument::SetAlpha().
+  
+  /// Sets the line alpha transparency.
+  /// @param a The alpha value (0.0 for fully transparent to 1.0 for fully opaque).
   void SetLineAlpha(double a);
+  
+  /// Sets the fill alpha transparency.
+  /// @param a The alpha value (0.0 for fully transparent to 1.0 for fully opaque).
   void SetFillAlpha(double a);
+  
+  /// Gets the current line alpha transparency.
+  /// @return The current line alpha value.
   double GetLineAlpha() const { return m_lineAlpha; }
+  
+  /// Gets the current fill alpha transparency.
+  /// @return The current fill alpha value.
   double GetFillAlpha() const { return m_fillAlpha; }
 
 protected:
@@ -206,26 +220,37 @@ private:
 class WXDLLIMPEXP_PDFDOC wxPdfGraphicsRenderer : public wxGraphicsRenderer
 {
 public:
+  /// Default constructor.
   wxPdfGraphicsRenderer() {}
+  /// Destructor.
   virtual ~wxPdfGraphicsRenderer() {}
 
   /// Returns the process-wide PDF graphics renderer.
+  /// @return A pointer to the singleton wxGraphicsRenderer.
   static wxGraphicsRenderer* GetPdfRenderer();
 
   // PDF-specific factories --------------------------------------------------
 
   /// Creates a context that owns a freshly-built PDF document configured
   /// from \a printData. Caller takes ownership of the returned context.
+  /// @param printData The print data to configure the document.
+  /// @return A pointer to the created wxGraphicsContext.
   wxGraphicsContext* CreateContextFromPrintData(const wxPrintData& printData);
 
   /// Creates a context that draws into the document already owned by
   /// \a dc. The returned context does not delete the underlying document
   /// when destroyed; the wxPdfDC retains ownership.
+  /// @param dc The wxPdfDC to draw into.
+  /// @return A pointer to the created wxGraphicsContext.
   wxGraphicsContext* CreateContext(wxPdfDC* dc);
 
   /// Creates a context that draws into the given existing PDF document as
   /// a template region of the given size. The context does not take
   /// ownership of the document.
+  /// @param pdfDocument The PDF document to draw into.
+  /// @param templateWidth The width of the template region.
+  /// @param templateHeight The height of the template region.
+  /// @return A pointer to the created wxGraphicsContext.
   wxGraphicsContext* CreateContextFromDocument(wxPdfDocument* pdfDocument,
                                                double templateWidth,
                                                double templateHeight);
