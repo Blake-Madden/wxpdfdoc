@@ -65,6 +65,7 @@ public:
 
   virtual void Clip(const wxRegion& region) wxOVERRIDE;
   virtual void Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h) wxOVERRIDE;
+  virtual void Clip(const wxGraphicsPath& path);
 
   /// PDF-specific clip that takes a native shape.
   /// @param shape The shape to clip the drawing context to.

@@ -1880,6 +1880,14 @@ void wxPdfGraphicsContext::Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h)
   m_clipCount++;
 }
 
+void wxPdfGraphicsContext::Clip(const wxGraphicsPath& path)
+{
+  if (!m_pdfDocument || path.IsNull()) return;
+  const wxPdfShape& shape = ((wxPdfGraphicsPathData*)path.GetRefData())->GetPdfShape();
+  m_pdfDocument->ClippingPath(shape);
+  m_clipCount++;
+}
+
 void wxPdfGraphicsContext::Clip(const wxPdfShape& shape)
 {
   if (!m_pdfDocument) return;
@@ -2066,9 +2074,9 @@ wxPdfGraphicsContext::GetTransform() const
 void
 wxPdfGraphicsContext::SetPen(const wxGraphicsPen& pen)
 {
-  if (!pen.IsNull())
+  m_pen = pen;
+  if (!m_pen.IsNull())
   {
-    m_pen = pen;
     ((wxPdfGraphicsPenData*) m_pen.GetRefData())->Apply(this);
   }
 }
@@ -2076,9 +2084,9 @@ wxPdfGraphicsContext::SetPen(const wxGraphicsPen& pen)
 void
 wxPdfGraphicsContext::SetBrush(const wxGraphicsBrush& brush)
 {
-  if (!brush.IsNull())
+  m_brush = brush;
+  if (!m_brush.IsNull())
   {
-    m_brush = brush;
     ((wxPdfGraphicsBrushData*) m_brush.GetRefData())->Apply(this);
   }
 }
@@ -2087,9 +2095,9 @@ void
 wxPdfGraphicsContext::SetFont(const wxGraphicsFont& font)
 {
   wxCHECK_RET(m_pdfDocument, wxT("wxPdfGraphicsContext::SetFont - no valid PDF document"));
-  if (!font.IsNull())
+  m_font = font;
+  if (!m_font.IsNull())
   {
-    m_font = font;
     ((wxPdfGraphicsFontData*) m_font.GetRefData())->Apply(this);
   }
 }
@@ -2207,6 +2215,9 @@ DoFillPathGradient(wxPdfGraphicsContext* context,
         0.0, 0.5, 1.0, 0.5, 1.0);
       if (gradId > 0)
       {
+        // Set alpha for this slice. This provides a stepped approximation 
+        // for axial alpha gradients.
+        doc->SetAlpha(1.0, c0.Alpha() / 255.0);
         doc->SetFillGradient(t0, -bigY, t1 - t0, 2 * bigY, gradId);
       }
     }
@@ -2292,7 +2303,70 @@ DoFillPathGradient(wxPdfGraphicsContext* context,
     nxo, nyo, 0.0, nxc, nyc, nr, 1.0);
   if (gradId > 0)
   {
-    doc->SetFillGradient(bx, by, bw, bh, gradId);
+    if (c0.Alpha() != c1.Alpha())
+    {
+      const int steps = 16;
+      for (int i = 0; i < steps; ++i)
+      {
+        double t0 = (double)i / steps;
+        double t1 = (double)(i + 1) / steps;
+
+        double alpha = (c0.Alpha() + (c1.Alpha() - c0.Alpha()) * t0) / 255.0;
+
+        context->PushState();
+
+        wxPdfShape annulus;
+        auto AddEllipseToShape = [](wxPdfShape& s, double ex, double ey, double erx, double ery) {
+          const double kappa = 0.55228474983079339840;
+          double eox = erx * kappa;
+          double eoy = ery * kappa;
+          s.MoveTo(ex + erx, ey);
+          s.CurveTo(ex + erx, ey + eoy, ex + eox, ey + ery, ex, ey + ery);
+          s.CurveTo(ex - eox, ey + ery, ex - erx, ey + eoy, ex - erx, ey);
+          s.CurveTo(ex - erx, ey - eoy, ex - eox, ey - ery, ex, ey - ery);
+          s.CurveTo(ex + eox, ey - ery, ex + erx, ey - eoy, ex + erx, ey);
+          s.ClosePath();
+        };
+
+        // Radii at t0 and t1. nr is normalized radius (0..0.5 typical) 
+        // relative to max(bw,bh). SetFillGradient maps 0..1 to bw, bh.
+        double rx1 = t1 * nr * bw;
+        double ry1 = t1 * nr * bh;
+        double rx0 = t0 * nr * bw;
+        double ry0 = t0 * nr * bh;
+
+        AddEllipseToShape(annulus, xo, yo, rx1, ry1);
+        if (t0 > 0)
+          AddEllipseToShape(annulus, xo, yo, rx0, ry0);
+
+        // Use context->Clip(shape) which uses W* when we set doc filling rule.
+        // The context tracks the clip's 'q' so PopState() balances it correctly.
+        int saveRule = doc->GetFillingRule();
+        doc->SetFillingRule(wxODDEVEN_RULE);
+        context->Clip(annulus);
+        doc->SetFillingRule(saveRule);
+
+        doc->SetAlpha(1.0, alpha);
+        doc->SetFillGradient(bx, by, bw, bh, gradId);
+        
+        context->PopState();
+      }
+    }
+    else
+    {
+      // For radial gradients with uniform alpha, we use the start color's 
+      // alpha as a constant alpha for the entire gradient.
+      doc->SetAlpha(1.0, c0.Alpha() / 255.0);
+      doc->SetFillGradient(bx, by, bw, bh, gradId);
+    }
+  }
+  else
+  {
+    // Fallback: solid fill if gradient registration failed.
+    int saveRule = doc->GetFillingRule();
+    doc->SetFillingRule(fillStyle);
+    doc->Shape(shape, wxPDF_STYLE_FILL);
+    doc->SetFillingRule(saveRule);
   }
   context->PopState();
 }
