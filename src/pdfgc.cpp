@@ -1226,8 +1226,106 @@ wxPdfGraphicsPathData::GetBox(wxDouble* x, wxDouble* y, wxDouble* w, wxDouble* h
 bool
 wxPdfGraphicsPathData::Contains(wxDouble x, wxDouble y, wxPolygonFillMode fillStyle) const
 {
-  // TODO: return reasonable value if possible
-  return false;
+  unsigned int segCount = m_path.GetSegmentCount();
+  if (segCount == 0)
+    return false;
+
+  // Fast bounding box rejection
+  wxDouble bx, by, bw, bh;
+  GetBox(&bx, &by, &bw, &bh);
+  if (x < bx || x > bx + bw || y < by || y > by + bh)
+    return false;
+
+  int windingNumber = 0;
+  wxPoint2DDouble curPt(0, 0);
+  wxPoint2DDouble startPt(0, 0);
+  bool hasStartPt = false;
+  bool hasCurPt = false;
+
+  // Helper to process a single line segment for the winding number algorithm
+  auto processEdge = [&](const wxPoint2DDouble& p1, const wxPoint2DDouble& p2)
+  {
+    if (p1.m_y <= y)
+    {
+      if (p2.m_y > y && (p2.m_x - p1.m_x) * (y - p1.m_y) - (x - p1.m_x) * (p2.m_y - p1.m_y) > 0)
+        windingNumber++;
+    }
+    else
+    {
+      if (p2.m_y <= y && (p2.m_x - p1.m_x) * (y - p1.m_y) - (x - p1.m_x) * (p2.m_y - p1.m_y) < 0)
+        windingNumber--;
+    }
+  };
+
+  int iterType = 0;
+  int iterPoints = 0;
+  for (unsigned int i = 0; i < segCount; ++i)
+  {
+    double coords[8];
+    wxPdfSegmentType type = m_path.GetSegment(iterType, iterPoints, coords);
+    switch (type)
+    {
+      case wxPDF_SEG_MOVETO:
+        if (hasCurPt && hasStartPt)
+          processEdge(curPt, startPt);
+        curPt = { coords[0], coords[1] };
+        startPt = curPt;
+        hasStartPt = true;
+        hasCurPt = true;
+        iterPoints += 2;
+        break;
+
+      case wxPDF_SEG_LINETO:
+        if (hasCurPt)
+        {
+          processEdge(curPt, { coords[0], coords[1] });
+          curPt = { coords[0], coords[1] };
+        }
+        iterPoints += 2;
+        break;
+
+      case wxPDF_SEG_CURVETO:
+      {
+        if (hasCurPt)
+        {
+          const wxPoint2DDouble p0 = curPt;
+          const wxPoint2DDouble p1 = { coords[0], coords[1] };
+          const wxPoint2DDouble p2 = { coords[2], coords[3] };
+          const wxPoint2DDouble p3 = { coords[4], coords[5] };
+          constexpr int steps = 10;
+          for (int step = 1; step <= steps; ++step)
+          {
+            const double t = step / (double)steps;
+            const double tInv = 1.0 - t;
+            const wxPoint2DDouble next = {
+              tInv * tInv * tInv * p0.m_x + 3 * tInv * tInv * t * p1.m_x + 3 * tInv * t * t * p2.m_x + t * t * t * p3.m_x,
+              tInv * tInv * tInv * p0.m_y + 3 * tInv * tInv * t * p1.m_y + 3 * tInv * t * t * p2.m_y + t * t * t * p3.m_y
+            };
+            processEdge(curPt, next);
+            curPt = next;
+          }
+        }
+        iterPoints += 6;
+        break;
+      }
+
+      case wxPDF_SEG_CLOSE:
+        if (hasStartPt)
+        {
+          processEdge(curPt, startPt);
+          curPt = startPt;
+        }
+        break;
+
+      default:
+        break;
+    }
+    iterType++;
+  }
+
+  if (fillStyle == wxODDEVEN_RULE)
+    return (windingNumber % 2) != 0;
+  return windingNumber != 0;
 }
 
 //-----------------------------------------------------------------------------
