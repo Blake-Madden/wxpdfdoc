@@ -104,7 +104,6 @@ public :
   // using the primitives from above
   //
 
-  /*
   // draws a an arc to two tangents connecting (current) to (x1,y1) and (x1,y1) to (x2,y2), also a straight line from (current) to (x1,y1)
   virtual void AddArcToPoint(wxDouble x1, wxDouble y1 , wxDouble x2, wxDouble y2, wxDouble r);
 
@@ -113,8 +112,6 @@ public :
 
   // appends a rounded rectangle
   virtual void AddRoundedRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h, wxDouble radius);
-
-  */
 
   // returns the native path
   virtual void* GetNativePath() const;
@@ -1092,10 +1089,65 @@ wxPdfGraphicsPathData::AddRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble
 }
 
 void
+wxPdfGraphicsPathData::AddEllipse(wxDouble x, wxDouble y, wxDouble w, wxDouble h)
+{
+  double rx = w / 2.0;
+  double ry = h / 2.0;
+  double cx = x + rx;
+  double cy = y + ry;
+
+  // Standard kappa for circle is 4/3 * (sqrt(2)-1) = approx 0.55228475
+  const double kappa = 0.55228474983079339840;
+
+  double ox = rx * kappa; // control point offset horizontal
+  double oy = ry * kappa; // control point offset vertical
+
+  MoveToPoint(cx + rx, cy);
+  AddCurveToPoint(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry);
+  AddCurveToPoint(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy);
+  AddCurveToPoint(cx - rx, cy - oy, cx - ox, cy - ry, cx, cy - ry);
+  AddCurveToPoint(cx + ox, cy - ry, cx + rx, cy - oy, cx + rx, cy);
+  CloseSubpath();
+}
+
+void
+wxPdfGraphicsPathData::AddRoundedRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h, wxDouble radius)
+{
+  if (radius <= 0)
+  {
+    AddRectangle(x, y, w, h);
+    return;
+  }
+
+  if (radius > w / 2) radius = w / 2;
+  if (radius > h / 2) radius = h / 2;
+
+  const double kappa = 0.55228474983079339840;
+  double offset = radius * kappa;
+
+  MoveToPoint(x + radius, y);
+  AddLineToPoint(x + w - radius, y);
+  AddCurveToPoint(x + w - radius + offset, y, x + w, y + radius - offset, x + w, y + radius);
+  AddLineToPoint(x + w, y + h - radius);
+  AddCurveToPoint(x + w, y + h - radius + offset, x + w - radius + offset, y + h, x + w - radius, y + h);
+  AddLineToPoint(x + radius, y + h);
+  AddCurveToPoint(x + radius - offset, y + h, x, y + h - radius + offset, x, y + h - radius);
+  AddLineToPoint(x, y + radius);
+  AddCurveToPoint(x, y + radius - offset, x + radius - offset, y, x + radius, y);
+  CloseSubpath();
+}
+
+void
+wxPdfGraphicsPathData::AddArcToPoint(wxDouble x1, wxDouble y1, wxDouble x2, wxDouble y2, wxDouble r)
+{
+  // TODO: Implement AddArcToPoint
+  wxFAIL_MSG("AddArcToPoint not yet implemented");
+}
+
+void
 wxPdfGraphicsPathData::AddCircle(wxDouble x, wxDouble y, wxDouble r)
 {
-  AddArc(x, y, r, 0, 2.0 * M_PI, true);
-  CloseSubpath();
+  AddEllipse(x - r, y - r, 2 * r, 2 * r);
 }
 
 void
