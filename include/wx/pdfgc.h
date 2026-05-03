@@ -58,7 +58,7 @@ public:
   virtual bool StartDoc(const wxString& message) wxOVERRIDE;
   virtual void EndDoc() wxOVERRIDE;
   virtual void StartPage(wxDouble width = 0, wxDouble height = 0) wxOVERRIDE;
-  virtual void EndPage() wxOVERRIDE;
+  virtual void EndPage() wxOVERRIDE {};
 
   virtual void PushState() wxOVERRIDE;
   virtual void PopState() wxOVERRIDE;

@@ -215,7 +215,7 @@ public:
   wxPdfGraphicsPenBrushData(wxGraphicsRenderer* renderer,
                             const wxColour& col,
                             bool isTransparent);
-  virtual ~wxPdfGraphicsPenBrushData();
+  virtual ~wxPdfGraphicsPenBrushData() {};
 
   virtual void Apply(wxPdfGraphicsContext* context);
 
@@ -232,9 +232,6 @@ protected:
   class wxPdfGraphicsBitmapData* m_bmpdata;
 
 private:
-  // Called once to allocate m_pattern if needed.
-  void InitHatchPattern();
-
   wxHatchStyle m_hatchStyle;
 
   wxDECLARE_NO_COPY_CLASS(wxPdfGraphicsPenBrushData);
@@ -366,7 +363,6 @@ wxPdfGraphicsPenBrushData::wxPdfGraphicsPenBrushData(wxGraphicsRenderer* rendere
   : wxGraphicsObjectRefData(renderer)
 {
   m_hatchStyle = wxHATCHSTYLE_INVALID;
-//  m_pattern = NULL;
   m_bmpdata = NULL;
 
   if (isTransparent)
@@ -379,86 +375,6 @@ wxPdfGraphicsPenBrushData::wxPdfGraphicsPenBrushData(wxGraphicsRenderer* rendere
   }
 }
 
-wxPdfGraphicsPenBrushData::~wxPdfGraphicsPenBrushData()
-{
-#if 0
-  if (m_bmpdata)
-  {
-    // Deleting the bitmap data also deletes the pattern referenced by
-    // m_pattern, so set it to NULL to avoid deleting it twice.
-    delete m_bmpdata;
-    m_pattern = NULL;
-  }
-  if (m_pattern)
-  {
-    cairo_pattern_destroy(m_pattern);
-  }
-#endif
-}
-
-void
-wxPdfGraphicsPenBrushData::InitHatchPattern()
-{
-#if 0
-  cairo_surface_t* const surface = 
-    cairo_surface_create_similar(cairo_get_target(ctext),                             CAIRO_CONTENT_COLOR_ALPHA, 10, 10);
-
-  cairo_t* const cr = cairo_create(surface);
-  cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-  cairo_set_line_width(cr, 1);
-  cairo_set_line_join(cr,CAIRO_LINE_JOIN_MITER);
-
-  switch (m_hatchStyle)
-  {
-    case wxHATCHSTYLE_CROSS:
-      cairo_move_to(cr, 5, 0);
-      cairo_line_to(cr, 5, 10);
-      cairo_move_to(cr, 0, 5);
-      cairo_line_to(cr, 10, 5);
-      break;
-
-    case wxHATCHSTYLE_BDIAGONAL:
-      cairo_move_to(cr, 0, 10);
-      cairo_line_to(cr, 10, 0);
-      break;
-
-    case wxHATCHSTYLE_FDIAGONAL:
-      cairo_move_to(cr, 0, 0);
-      cairo_line_to(cr, 10, 10);
-      break;
-
-    case wxHATCHSTYLE_CROSSDIAG:
-      cairo_move_to(cr, 0, 0);
-      cairo_line_to(cr, 10, 10);
-      cairo_move_to(cr, 10, 0);
-      cairo_line_to(cr, 0, 10);
-      break;
-
-    case wxHATCHSTYLE_HORIZONTAL:
-      cairo_move_to(cr, 0, 5);
-      cairo_line_to(cr, 10, 5);
-      break;
-
-    case wxHATCHSTYLE_VERTICAL:
-      cairo_move_to(cr, 5, 0);
-      cairo_line_to(cr, 5, 10);
-      break;
-
-    default:
-      wxFAIL_MSG(wxS("Invalid hatch pattern style."));
-  }
-
-  cairo_set_source_rgba(cr, m_red, m_green, m_blue, m_alpha);
-  cairo_stroke(cr);
-
-  cairo_destroy(cr);
-
-  m_pattern = cairo_pattern_create_for_surface(surface);
-  cairo_surface_destroy(surface);
-  cairo_pattern_set_extend(m_pattern, CAIRO_EXTEND_REPEAT);
-#endif
-}
-
 void
 wxPdfGraphicsPenBrushData::InitStipple(const wxBitmap& WXUNUSED(bmp))
 {
@@ -469,8 +385,8 @@ wxPdfGraphicsPenBrushData::InitStipple(const wxBitmap& WXUNUSED(bmp))
 void
 wxPdfGraphicsPenBrushData::InitHatch(wxHatchStyle hatchStyle)
 {
-  // We can't create m_pattern right now as we don't have the Cairo context
-  // needed for it, so just remember that we need to do it.
+  // We can't create pattern right now as as it's not implemented,
+  // so just remember that we need to do it.
   m_hatchStyle = hatchStyle;
 }
 
@@ -1607,28 +1523,6 @@ wxPdfGraphicsBitmapData::~wxPdfGraphicsBitmapData()
 // wxPdfGraphicsContext implementation
 //-----------------------------------------------------------------------------
 
-#if 0
-class wxPdfGraphicsOffsetHelper
-{
-public :
-    wxPdfGraphicsOffsetHelper( cairo_t* ctx , bool offset )
-    {
-        m_ctx = ctx;
-        m_offset = offset;
-        if ( m_offset )
-             cairo_translate( m_ctx, 0.5, 0.5 );
-    }
-    ~wxPdfGraphicsOffsetHelper( )
-    {
-        if ( m_offset )
-            cairo_translate( m_ctx, -0.5, -0.5 );
-    }
-public :
-    cairo_t* m_ctx;
-    bool m_offset;
-} ;
-#endif
-
 wxPdfGraphicsContext::wxPdfGraphicsContext(wxGraphicsRenderer* renderer, const wxPrintData& data)
   : wxGraphicsContext(renderer)
 {
@@ -1660,9 +1554,7 @@ wxPdfGraphicsContext::Init()
   wxScreenDC screendc;
   m_ppiPdfFont = screendc.GetPPI().GetHeight();
   m_mappingModeStyle = wxPDF_MAPMODESTYLE_STANDARD;
-
-//  SetBackgroundMode(wxSOLID);
-  
+ 
   m_printData.SetOrientation(wxPORTRAIT);
   m_printData.SetPaperId(wxPAPER_A4);
   m_printData.SetFilename(wxT("default.pdf"));
@@ -1740,17 +1632,11 @@ wxPdfGraphicsContext::StartDoc(const wxString& WXUNUSED(message))
   {
     m_pdfDocument = new wxPdfDocument(m_printData.GetOrientation(), wxString(wxT("pt")), m_printData.GetPaperId());
     m_pdfDocument->Open();
-    //m_pdfDocument->SetCompression(false);
     m_pdfDocument->SetAuthor(wxT("wxPdfGraphicsContext"));
     m_pdfDocument->SetTitle(wxT("wxPdfGraphicsContext"));
 
-    // TODO Begin
     wxGraphicsContext::SetBrush(*wxBLACK_BRUSH);
     wxGraphicsContext::SetPen(*wxBLACK_PEN);
-//    SetBackground(*wxWHITE_BRUSH);
-//    SetTextForeground(*wxBLACK);
-//    SetDeviceOrigin(0, 0);
-    // TODO End
   }
   return true;
 }
@@ -1781,20 +1667,6 @@ wxPdfGraphicsContext::StartPage(wxDouble width, wxDouble height)
     style.SetLineJoin(wxPDF_LINEJOIN_MITER);
     m_pdfDocument->SetLineStyle(style);
   }
-}
-
-void
-wxPdfGraphicsContext::EndPage()
-{
-#if 0
-  if (m_ok)
-  {
-    if (m_clipping)
-    {
-      DestroyClippingRegion();
-    }
-  }
-#endif
 }
 
 void wxPdfGraphicsContext::PushState()
@@ -2446,36 +2318,8 @@ wxPdfGraphicsContext::GetTextExtent(const wxString& str,
 
 void wxPdfGraphicsContext::GetPartialTextExtents(const wxString& text, wxArrayDouble& widths) const
 {
-#if 0
-    widths.Empty();
-    wxCHECK_RET( !m_font.IsNull(), wxT("wxPdfGraphicsContext::GetPartialTextExtents - no valid font set") );
-#if __WXGTK__
-    const wxCharBuffer data = text.utf8_str();
-    int w = 0;
-    if (data.length())
-    {
-        PangoLayout* layout = pango_cairo_create_layout(m_context);
-        const wxFont& font = static_cast<wxPdfGraphicsFontData*>(m_font.GetRefData())->GetFont();
-        pango_layout_set_font_description(layout, font.GetNativeFontInfo()->description);
-        pango_layout_set_text(layout, data, data.length());
-        PangoLayoutIter* iter = pango_layout_get_iter(layout);
-        PangoRectangle rect;
-        do {
-            pango_layout_iter_get_cluster_extents(iter, NULL, &rect);
-            w += rect.width;
-            widths.Add(PANGO_PIXELS(w));
-        } while (pango_layout_iter_next_cluster(iter));
-        pango_layout_iter_free(iter);
-        g_object_unref(layout);
-    }
-    size_t i = widths.GetCount();
-    const size_t len = text.length();
-    while (i++ < len)
-        widths.Add(PANGO_PIXELS(w));
-#else
-    // TODO
-#endif
-#endif
+  wxLogDebug(wxT("wxPdfGraphicsContext::GetPartialTextExtents - not implemented"));
+  widths.Clear();
 }
 
 void
@@ -2506,9 +2350,6 @@ wxPdfGraphicsContext::DrawBitmap(const wxGraphicsBitmap& bmp, wxDouble x, wxDoub
 void
 wxPdfGraphicsContext::DrawIcon(const wxIcon& icon, wxDouble x, wxDouble y, wxDouble w, wxDouble h)
 {
-  // An icon is a bitmap on wxGTK, so do this the easy way.  When we want to
-  // start using the Cairo backend on other platforms then we may need to
-  // fiddle with this...
   DrawBitmap(icon, x, y, w, h);
 }
 
