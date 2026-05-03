@@ -145,6 +145,8 @@ public:
   virtual void* GetNativeContext() wxOVERRIDE;
 
   /// Sets the antialiasing mode.
+  /// Note that PDF readers, not the producer, control antialiasing.
+  /// This method accepts the request, but has no effect on the generated PDF.
   /// @param antialias The antialiasing mode.
   /// @return true if the mode is supported (default/none).
   virtual bool SetAntialiasMode(wxAntialiasMode antialias) wxOVERRIDE;
@@ -235,9 +237,9 @@ public:
                              wxDouble* width, wxDouble* height,
                              wxDouble* descent, wxDouble* externalLeading) const wxOVERRIDE;
 
-  /// Retrieves the extents of individual characters/clusters in the text.
+  /// Not implemented for the PDF backend.
   /// @param text The text to measure.
-  /// @param widths The array to receive the widths.
+  /// @param widths The array to receive the widths (cleared by this method).
   virtual void GetPartialTextExtents(const wxString& text,
                                      wxArrayDouble& widths) const wxOVERRIDE;
 
@@ -330,8 +332,12 @@ public:
   virtual bool ShouldOffset() const wxOVERRIDE;
 
 #ifdef __WXMSW__
-  // PDF has no native HDC; nothing to hand over.
+  /// PDF has no native HDC; nothing to hand over.
+  /// @return Always returns NULL.
   virtual WXHDC GetNativeHDC() wxOVERRIDE { return NULL; }
+
+  /// Does nothing, as there is no native HDC to release.
+  /// @param hdc The HDC to release (unused).
   virtual void ReleaseNativeHDC(WXHDC WXUNUSED(hdc)) wxOVERRIDE {}
 #endif
 
@@ -426,7 +432,7 @@ public:
   virtual ~wxPdfGraphicsRenderer() {}
 
   /// Returns the process-wide PDF graphics renderer.
-  /// @return A pointer to the singleton wxGraphicsRenderer.
+  /// @return A pointer to the singleton @c wxGraphicsRenderer.
   static wxGraphicsRenderer* GetPdfRenderer();
 
   // PDF-specific factories --------------------------------------------------
@@ -434,14 +440,14 @@ public:
   /// Creates a context that owns a freshly-built PDF document configured
   /// from \a printData. Caller takes ownership of the returned context.
   /// @param printData The print data to configure the document.
-  /// @return A pointer to the created wxGraphicsContext.
+  /// @return A pointer to the created @c wxGraphicsContext.
   wxGraphicsContext* CreateContextFromPrintData(const wxPrintData& printData);
 
   /// Creates a context that draws into the document already owned by
   /// \a dc. The returned context does not delete the underlying document
   /// when destroyed; the wxPdfDC retains ownership.
   /// @param dc The wxPdfDC to draw into.
-  /// @return A pointer to the created wxGraphicsContext.
+  /// @return A pointer to the created @c wxGraphicsContext.
   wxGraphicsContext* CreateContext(wxPdfDC* dc);
 
   /// Creates a context that draws into the given existing PDF document as
@@ -450,50 +456,123 @@ public:
   /// @param pdfDocument The PDF document to draw into.
   /// @param templateWidth The width of the template region.
   /// @param templateHeight The height of the template region.
-  /// @return A pointer to the created wxGraphicsContext.
+  /// @return A pointer to the created @c wxGraphicsContext.
   wxGraphicsContext* CreateContextFromDocument(wxPdfDocument* pdfDocument,
                                                double templateWidth,
                                                double templateHeight);
 
   // wxGraphicsRenderer overrides -------------------------------------------
 
+  /// Not supported for the PDF renderer.
+  /// @param dc The window DC.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContext(const wxWindowDC& dc) wxOVERRIDE;
+
+  /// Not supported for the PDF renderer.
+  /// @param dc The memory DC.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContext(const wxMemoryDC& dc) wxOVERRIDE;
+
 #if wxUSE_PRINTING_ARCHITECTURE
+  /// Not supported for the PDF renderer.
+  /// @param dc The printer DC.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContext(const wxPrinterDC& dc) wxOVERRIDE;
 #endif
+
 #ifdef __WXMSW__
 #if wxUSE_ENH_METAFILE
+  /// Not supported for the PDF renderer.
+  /// @param dc The enhanced metafile DC.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContext(const wxEnhMetaFileDC& dc) wxOVERRIDE;
 #endif
 #endif
 
+  /// Not supported for the PDF renderer.
+  /// @param context The native context.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContextFromNativeContext(void* context) wxOVERRIDE;
+
+  /// Not supported for the PDF renderer.
+  /// @param window The native window.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContextFromNativeWindow(void* window) wxOVERRIDE;
+
 #ifdef __WXMSW__
+  /// Not supported for the PDF renderer.
+  /// @param dc The native HDC.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContextFromNativeHDC(WXHDC dc) wxOVERRIDE;
 #endif
+
+  /// Not supported for the PDF renderer.
+  /// @param window The window.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContext(wxWindow* window) wxOVERRIDE;
+
 #if wxUSE_IMAGE
+  /// Not supported for the PDF renderer.
+  /// @param image The image.
+  /// @return Always returns NULL.
   virtual wxGraphicsContext* CreateContextFromImage(wxImage& image) wxOVERRIDE;
 #endif
 
+  /// Creates a document-less context for measuring text and paths.
+  /// @return A pointer to the created @c wxGraphicsContext.
   virtual wxGraphicsContext* CreateMeasuringContext() wxOVERRIDE;
 
+  /// Creates a new graphics path.
+  /// @return A new @c wxGraphicsPath.
   virtual wxGraphicsPath CreatePath() wxOVERRIDE;
 
+  /// Creates a new graphics matrix.
+  /// @param a The 11 component.
+  /// @param b The 12 component.
+  /// @param c The 21 component.
+  /// @param d The 22 component.
+  /// @param tx The X translation.
+  /// @param ty The Y translation.
+  /// @return A new wxGraphicsMatrix.
   virtual wxGraphicsMatrix CreateMatrix(wxDouble a = 1.0, wxDouble b = 0.0,
                                         wxDouble c = 0.0, wxDouble d = 1.0,
                                         wxDouble tx = 0.0, wxDouble ty = 0.0) wxOVERRIDE;
 
+  /// Creates a graphics pen.
+  /// @param info The pen info.
+  /// @return A new @c wxGraphicsPen.
   virtual wxGraphicsPen CreatePen(const wxGraphicsPenInfo& info) wxOVERRIDE;
+
+  /// Creates a graphics brush.
+  /// @param brush The brush.
+  /// @return A new @c wxGraphicsBrush.
   virtual wxGraphicsBrush CreateBrush(const wxBrush& brush) wxOVERRIDE;
 
+  /// Creates a linear gradient brush.
+  /// Note that the optional transformation matrix is currently ignored.
+  /// @param x1 The start X.
+  /// @param y1 The start Y.
+  /// @param x2 The end X.
+  /// @param y2 The end Y.
+  /// @param stops The gradient stops.
+  /// @param matrix The transformation matrix (ignored).
+  /// @return A new @c wxGraphicsBrush.
   virtual wxGraphicsBrush
   CreateLinearGradientBrush(wxDouble x1, wxDouble y1,
                             wxDouble x2, wxDouble y2,
                             const wxGraphicsGradientStops& stops,
                             const wxGraphicsMatrix& matrix = wxNullGraphicsMatrix) wxOVERRIDE;
+
+  /// Creates a radial gradient brush.
+  /// Note that the optional transformation matrix is currently ignored.
+  /// @param xo The start X.
+  /// @param yo The start Y.
+  /// @param xc The end X.
+  /// @param yc The end Y.
+  /// @param radius The radius.
+  /// @param stops The gradient stops.
+  /// @param matrix The transformation matrix (ignored).
+  /// @return A new @c wxGraphicsBrush.
   virtual wxGraphicsBrush
   CreateRadialGradientBrush(wxDouble xo, wxDouble yo,
                             wxDouble xc, wxDouble yc,
@@ -501,26 +580,69 @@ public:
                             const wxGraphicsGradientStops& stops,
                             const wxGraphicsMatrix& matrix = wxNullGraphicsMatrix) wxOVERRIDE;
 
+  /// Creates a graphics font.
+  /// @param font The font.
+  /// @param col The colour.
+  /// @return A new @c wxGraphicsFont.
   virtual wxGraphicsFont CreateFont(const wxFont& font,
                                     const wxColour& col = *wxBLACK) wxOVERRIDE;
+
+  /// Creates a graphics font.
+  /// @param sizeInPixels The size in pixels.
+  /// @param facename The font face name.
+  /// @param flags The font flags.
+  /// @param col The colour.
+  /// @return A new @c wxGraphicsFont.
   virtual wxGraphicsFont CreateFont(double sizeInPixels,
                                     const wxString& facename,
                                     int flags = wxFONTFLAG_DEFAULT,
                                     const wxColour& col = *wxBLACK) wxOVERRIDE;
+
+  /// Creates a graphics font at a specific DPI.
+  /// Note that PDF user space is fixed at 72 DPI; the requested DPI is ignored.
+  /// @param font The font.
+  /// @param dpi The DPI.
+  /// @param col The colour.
+  /// @return A new @c wxGraphicsFont.
   virtual wxGraphicsFont CreateFontAtDPI(const wxFont& font,
                                          const wxRealPoint& dpi,
                                          const wxColour& col = *wxBLACK) wxOVERRIDE;
 
+  /// Creates a graphics bitmap.
+  /// @param bitmap The bitmap.
+  /// @return A new @c wxGraphicsBitmap.
   virtual wxGraphicsBitmap CreateBitmap(const wxBitmap& bitmap) wxOVERRIDE;
+
 #if wxUSE_IMAGE
+  /// Creates a graphics bitmap from an image.
+  /// @param image The image.
+  /// @return A new @c wxGraphicsBitmap.
   virtual wxGraphicsBitmap CreateBitmapFromImage(const wxImage& image) wxOVERRIDE;
+
+  /// Creates an image from a graphics bitmap.
+  /// @param bmp The graphics bitmap.
+  /// @return A new @c wxImage.
   virtual wxImage CreateImageFromBitmap(const wxGraphicsBitmap& bmp) wxOVERRIDE;
 #endif
+
+  /// Not implemented for the PDF renderer.
+  /// @param bitmap The native bitmap.
+  /// @return Always returns @c wxNullGraphicsBitmap.
   virtual wxGraphicsBitmap CreateBitmapFromNativeBitmap(void* bitmap) wxOVERRIDE;
+
+  /// Not implemented for the PDF renderer.
+  /// @param bitmap The graphics bitmap.
+  /// @param x The top-left X.
+  /// @param y The top-left Y.
+  /// @param w The width.
+  /// @param h The height.
+  /// @return Always returns @c wxNullGraphicsBitmap.
   virtual wxGraphicsBitmap CreateSubBitmap(const wxGraphicsBitmap& bitmap,
                                            wxDouble x, wxDouble y,
                                            wxDouble w, wxDouble h) wxOVERRIDE;
 
+  /// Returns "pdf" as the renderer name.
+  /// @return The name of the renderer.
   virtual wxString GetName() const wxOVERRIDE;
   /// Retrieves the version of the renderer.
   /// @param[out] major Pointer to receive the major version.
