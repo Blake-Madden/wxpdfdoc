@@ -39,101 +39,268 @@ class WXDLLIMPEXP_PDFDOC wxPdfGraphicsContext : public wxGraphicsContext
 public:
   /// Construct a context that owns a freshly-created wxPdfDocument
   /// configured from the given print data.
+  /// @param renderer Pointer to the graphics renderer.
+  /// @param data The print data to configure the document.
   wxPdfGraphicsContext(wxGraphicsRenderer* renderer, const wxPrintData& data);
 
   /// Construct a context that draws into an existing wxPdfDocument as a
   /// template region. The context does not own the document.
+  /// @param renderer Pointer to the graphics renderer.
+  /// @param pdfDocument Pointer to the existing PDF document.
+  /// @param templateWidth The width of the template region.
+  /// @param templateHeight The height of the template region.
   wxPdfGraphicsContext(wxGraphicsRenderer* renderer,
                        wxPdfDocument* pdfDocument,
                        double templateWidth,
                        double templateHeight);
 
   /// Construct an empty (measuring) context with no associated document.
+  /// @param renderer Pointer to the graphics renderer.
   wxPdfGraphicsContext(wxGraphicsRenderer* renderer);
 
+  /// Destructor.
   virtual ~wxPdfGraphicsContext();
 
   // wxGraphicsContext overrides --------------------------------------------
 
+  /// Starts a new document.
+  /// @param message The message to associate with the document (often unused in PDF context).
+  /// @return true if successful, false otherwise.
   virtual bool StartDoc(const wxString& message) wxOVERRIDE;
+
+  /// Ends the current document, saving it to the file specified in print data.
   virtual void EndDoc() wxOVERRIDE;
+
+  /// Starts a new page in the document.
+  /// @param width The width of the page.
+  /// @param height The height of the page.
   virtual void StartPage(wxDouble width = 0, wxDouble height = 0) wxOVERRIDE;
+
+  /// Ends the current page.
   virtual void EndPage() wxOVERRIDE {};
 
+  /// Saves the current transformation matrix and clipping region.
   virtual void PushState() wxOVERRIDE;
+
+  /// Restores the previously saved transformation matrix and clipping region.
   virtual void PopState() wxOVERRIDE;
 
+  /// Clips the current graphics context to the given region.
+  /// @param region The clipping region.
   virtual void Clip(const wxRegion& region) wxOVERRIDE;
+
+  /// Clips the current graphics context to the given rectangle.
+  /// @param x The top-left X coordinate of the clipping rectangle.
+  /// @param y The top-left Y coordinate of the clipping rectangle.
+  /// @param w The width of the clipping rectangle.
+  /// @param h The height of the clipping rectangle.
   virtual void Clip(wxDouble x, wxDouble y, wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// Clips the current graphics context to the given path.
+  /// @param path The clipping path.
   virtual void Clip(const wxGraphicsPath& path);
 
   /// PDF-specific clip that takes a native shape.
   /// @param shape The shape to clip the drawing context to.
   void Clip(const wxPdfShape& shape);
 
+  /// Resets the clipping region, restoring the entire context.
   virtual void ResetClip() wxOVERRIDE;
+
+  /// Retrieves the bounding box of the current clipping region.
+  /// @param[out] x Pointer to receive the top-left X coordinate.
+  /// @param[out] y Pointer to receive the top-left Y coordinate.
+  /// @param[out] w Pointer to receive the width of the box.
+  /// @param[out] h Pointer to receive the height of the box.
   virtual void GetClipBox(wxDouble* x, wxDouble* y, wxDouble* w, wxDouble* h) wxOVERRIDE;
 
+  /// Returns NULL, as the PDF backend has no native graphics context.
+  /// @return Always returns NULL.
   virtual void* GetNativeContext() wxOVERRIDE;
 
+  /// Sets the antialiasing mode.
+  /// @param antialias The antialiasing mode.
+  /// @return true if the mode is supported (default/none).
   virtual bool SetAntialiasMode(wxAntialiasMode antialias) wxOVERRIDE;
+
+  /// Sets the interpolation quality (the process of estimating pixel values when resizing images).
+  /// @param interpolation The interpolation quality.
+  /// @return false, as this is not supported for PDF (PDF renders images at their native resolution).
   virtual bool SetInterpolationQuality(wxInterpolationQuality interpolation) wxOVERRIDE;
+
+  /// Sets the composition mode.
+  /// @param op The composition mode.
+  /// @return true if supported (source/over blending), false otherwise.
   virtual bool SetCompositionMode(wxCompositionMode op) wxOVERRIDE;
 
+  /// Gets the resolution of the context in DPI.
+  /// @param[out] dpiX Pointer to receive the horizontal DPI.
+  /// @param[out] dpiY Pointer to receive the vertical DPI.
   virtual void GetDPI(wxDouble* dpiX, wxDouble* dpiY) const wxOVERRIDE;
 
+  /// Begins a new transparency layer.
+  /// @param opacity The opacity factor (0.0 to 1.0).
   virtual void BeginLayer(wxDouble opacity) wxOVERRIDE;
+
+  /// Ends the current transparency layer.
   virtual void EndLayer() wxOVERRIDE;
 
+  /// Applies a translation to the transformation matrix.
+  /// @param dx The translation in X.
+  /// @param dy The translation in Y.
   virtual void Translate(wxDouble dx, wxDouble dy) wxOVERRIDE;
+
+  /// Applies a scaling to the transformation matrix.
+  /// @param xScale The scaling factor in X.
+  /// @param yScale The scaling factor in Y.
   virtual void Scale(wxDouble xScale, wxDouble yScale) wxOVERRIDE;
+
+  /// Applies a rotation to the transformation matrix.
+  /// @param angle The rotation angle in radians.
   virtual void Rotate(wxDouble angle) wxOVERRIDE;
+
+  /// Concatenates the given transformation matrix with the current one.
+  /// @param matrix The transformation matrix to concatenate.
   virtual void ConcatTransform(const wxGraphicsMatrix& matrix) wxOVERRIDE;
+
+  /// Sets the current transformation matrix.
+  /// @param matrix The transformation matrix to set.
   virtual void SetTransform(const wxGraphicsMatrix& matrix) wxOVERRIDE;
+
+  /// Returns the current transformation matrix.
+  /// @return The current transformation matrix.
   virtual wxGraphicsMatrix GetTransform() const wxOVERRIDE;
 
+  /// Sets the current pen.
+  /// @param pen The graphics pen.
   virtual void SetPen(const wxGraphicsPen& pen) wxOVERRIDE;
+
+  /// Sets the current brush.
+  /// @param brush The graphics brush.
   virtual void SetBrush(const wxGraphicsBrush& brush) wxOVERRIDE;
+
+  /// Sets the current font.
+  /// @param font The graphics font.
   virtual void SetFont(const wxGraphicsFont& font) wxOVERRIDE;
 
+  /// Strokes the given path with the current pen.
+  /// @param p The path to stroke.
   virtual void StrokePath(const wxGraphicsPath& p) wxOVERRIDE;
+
+  /// Fills the given path with the current brush.
+  /// @param p The path to fill.
+  /// @param fillStyle The polygon fill rule (@c wxWINDING_RULE or @c wxODDEVEN_RULE).
   virtual void FillPath(const wxGraphicsPath& p,
                         wxPolygonFillMode fillStyle = wxWINDING_RULE) wxOVERRIDE;
+
+  /// Draws the given path (strokes and fills) with current pen and brush.
+  /// @param path The path to draw.
+  /// @param fillStyle The polygon fill rule.
   virtual void DrawPath(const wxGraphicsPath& path,
                         wxPolygonFillMode fillStyle = wxODDEVEN_RULE) wxOVERRIDE;
 
+  /// Retrieves the extent of the given text.
+  /// @param str The string to measure.
+  /// @param[out] width Pointer to receive the width.
+  /// @param[out] height Pointer to receive the height.
+  /// @param[out] descent Pointer to receive the descent.
+  /// @param[out] externalLeading Pointer to receive the external leading.
   virtual void GetTextExtent(const wxString& str,
                              wxDouble* width, wxDouble* height,
                              wxDouble* descent, wxDouble* externalLeading) const wxOVERRIDE;
+
+  /// Retrieves the extents of individual characters/clusters in the text.
+  /// @param text The text to measure.
+  /// @param widths The array to receive the widths.
   virtual void GetPartialTextExtents(const wxString& text,
                                      wxArrayDouble& widths) const wxOVERRIDE;
 
+  /// Draws the given bitmap.
+  /// @param bmp The graphics bitmap.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
   virtual void DrawBitmap(const wxGraphicsBitmap& bmp,
                           wxDouble x, wxDouble y,
                           wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// Draws the given bitmap.
+  /// @param bmp The bitmap.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
   virtual void DrawBitmap(const wxBitmap& bmp,
                           wxDouble x, wxDouble y,
                           wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// Draws the given icon.
+  /// @param icon The icon.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
   virtual void DrawIcon(const wxIcon& icon,
                         wxDouble x, wxDouble y,
                         wxDouble w, wxDouble h) wxOVERRIDE;
 
+  /// Strokes a line.
+  /// @param x1 The start X.
+  /// @param y1 The start Y.
+  /// @param x2 The end X.
+  /// @param y2 The end Y.
   virtual void StrokeLine(wxDouble x1, wxDouble y1,
                           wxDouble x2, wxDouble y2) wxOVERRIDE;
+
+  /// Strokes a series of connected lines.
+  /// @param n The number of points.
+  /// @param points Pointer to the array of points.
   virtual void StrokeLines(size_t n, const wxPoint2DDouble* points) wxOVERRIDE;
+
+  /// Strokes a series of disjoint lines.
+  /// @param n The number of lines.
+  /// @param beginPoints Pointer to the start points.
+  /// @param endPoints Pointer to the end points.
   virtual void StrokeLines(size_t n,
                            const wxPoint2DDouble* beginPoints,
                            const wxPoint2DDouble* endPoints) wxOVERRIDE;
+
+  /// Draws a series of lines, filling the resulting polygon.
+  /// @param n The number of points.
+  /// @param points Pointer to the array of points.
+  /// @param fillStyle The polygon fill rule.
   virtual void DrawLines(size_t n, const wxPoint2DDouble* points,
                          wxPolygonFillMode fillStyle = wxODDEVEN_RULE) wxOVERRIDE;
+
+  /// Draws a rectangle.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
   virtual void DrawRectangle(wxDouble x, wxDouble y,
                              wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// Draws an ellipse.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
   virtual void DrawEllipse(wxDouble x, wxDouble y,
                            wxDouble w, wxDouble h) wxOVERRIDE;
+
+  /// Draws a rounded rectangle.
+  /// @param x The top-left X coordinate.
+  /// @param y The top-left Y coordinate.
+  /// @param w The width.
+  /// @param h The height.
+  /// @param radius The corner radius.
   virtual void DrawRoundedRectangle(wxDouble x, wxDouble y,
                                     wxDouble w, wxDouble h,
                                     wxDouble radius) wxOVERRIDE;
 
+  /// Returns true if coordinate offsetting is needed for pixel alignment.
+  /// @return True if offsetting is required, false otherwise.
   virtual bool ShouldOffset() const wxOVERRIDE;
 
 #ifdef __WXMSW__
@@ -175,7 +342,13 @@ private:
   void Init();
   void SetPrintData(const wxPrintData& data);
 
-  // Implementation detail used by font metric calculations.
+  /// Implementation detail used by font metric calculations.
+  /// @param desc Pointer to the font description.
+  /// @param pointSize The point size of the font.
+  /// @param[out] height Pointer to receive the height.
+  /// @param[out] ascent Pointer to receive the ascent.
+  /// @param[out] descent Pointer to receive the descent.
+  /// @param[out] extLeading Pointer to receive the external leading.
   void CalculateFontMetrics(class wxPdfFontDescription* desc, double pointSize,
                             double* height, double* ascent,
                             double* descent, double* extLeading) const;
@@ -323,6 +496,10 @@ public:
                                            wxDouble w, wxDouble h) wxOVERRIDE;
 
   virtual wxString GetName() const wxOVERRIDE;
+  /// Retrieves the version of the renderer.
+  /// @param[out] major Pointer to receive the major version.
+  /// @param[out] minor Pointer to receive the minor version.
+  /// @param[out] micro Pointer to receive the micro version.
   virtual void GetVersion(int* major, int* minor = NULL, int* micro = NULL) const wxOVERRIDE;
 
 private:
