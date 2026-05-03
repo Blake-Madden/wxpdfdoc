@@ -1498,8 +1498,6 @@ wxPdfGraphicsBitmapData::wxPdfGraphicsBitmapData(wxGraphicsRenderer* renderer,
   : wxGraphicsBitmapData(renderer)
 {
   // wxPdfDocument::Image takes a wxImage; convert once and store.
-  // PDF doesn't need the cairo-style raw RGBA buffer the abandoned code
-  // attempted to construct.
   if (bmp.IsOk())
   {
     m_image = bmp.ConvertToImage();
