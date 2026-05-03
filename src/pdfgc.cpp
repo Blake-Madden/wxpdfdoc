@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Name:        pdfgc.cpp
 // Purpose:     Implementation of wxPdfGraphicsContext
-// Author:      Ulrich Telle
+// Author:      Ulrich Telle, Blake Madden
 // Modified by:
 // Created:     2012-11-25
 // Copyright:   (c) Ulrich Telle

@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Name:        pdfgc.h
 // Purpose:     Interface of wxPdfGraphicsContext / wxPdfGraphicsRenderer
-// Author:      Ulrich Telle
+// Author:      Ulrich Telle, Blake Madden
 // Created:     2012-11-25
 // Copyright:   (c) Ulrich Telle
 // Licence:     wxWindows licence
