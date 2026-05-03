@@ -34,6 +34,32 @@ class WXDLLIMPEXP_FWD_PDFDOC wxPdfDC;
 /// wxPdfDC::GetGraphicsContext(). The rendering primitives mirror the
 /// standard wxGraphicsContext API and are translated to wxPdfDocument
 /// drawing calls.
+///
+/// @code
+/// wxPdfDC dc(printData);
+/// if (dc.StartDoc(_("Quarterly Report")))
+/// {
+///     dc.StartPage();
+///     wxGraphicsContext* gc = dc.GetGraphicsContext();
+///     if (gc)
+///     {
+///         // Draw title
+///         gc->SetFont(*wxSWISS_FONT, *wxBLACK);
+///         gc->DrawText(_("Quarterly Business Report"), 50, 50);
+///
+///         // Draw a squiggly Bézier underline
+///         wxGraphicsPath path = gc->CreatePath();
+///         path.MoveToPoint(50, 70);
+///         path.AddCurveToPoint(100, 60, 150, 80, 200, 70);
+///         path.AddCurveToPoint(250, 60, 300, 80, 350, 70);
+///
+///         gc->SetPen(wxGraphicsPenInfo(*wxBLUE).Width(2));
+///         gc->StrokePath(path);
+///     }
+///     dc.EndPage();
+///     dc.EndDoc();
+/// }
+/// @endcode
 class WXDLLIMPEXP_PDFDOC wxPdfGraphicsContext : public wxGraphicsContext
 {
 public:
