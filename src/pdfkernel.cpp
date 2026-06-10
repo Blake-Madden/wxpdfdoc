@@ -356,9 +356,28 @@ wxPdfDocument::EndDoc()
   {
     m_PDFVersion = wxS("1.5");
   }
+  if (m_isPdfTagged && m_PDFVersion < wxS("1.4"))
+  {
+    m_PDFVersion = wxS("1.4");
+  }
   if (m_importVersion > m_PDFVersion)
   {
     m_PDFVersion = m_importVersion;
+  }
+
+  // Pre-compute page -> StructParents index before page output
+  if (m_isPdfTagged)
+  {
+    int nextIdx = 0;
+    size_t si;
+    for (si = 0; si < m_structElements.GetCount(); si++)
+    {
+      wxPdfStructElement* elem = (wxPdfStructElement*) m_structElements[si];
+      if (m_pageStructParents->find(elem->m_page) == m_pageStructParents->end())
+      {
+        (*m_pageStructParents)[elem->m_page] = nextIdx++;
+      }
+    }
   }
 
   PutHeader();
@@ -409,6 +428,7 @@ void
 wxPdfDocument::BeginPage(int orientation, wxSize pageSize)
 {
   m_page++;
+  m_mcid = 0;
   (*m_pages)[m_page] = new wxMemoryOutputStream();
   m_state = 2;
 
@@ -714,6 +734,15 @@ wxPdfDocument::PutCatalog()
   if (!m_ocgs->empty())
   {
     PutOCProperties();
+  }
+
+  if (m_isPdfTagged)
+  {
+    Out("/MarkInfo <</Marked true>>");
+    if (m_nStructTreeRoot > 0)
+    {
+      OutAscii(wxString::Format(wxS("/StructTreeRoot %d 0 R"), m_nStructTreeRoot));
+    }
   }
 
   if (m_isPdfA1)
@@ -1033,6 +1062,14 @@ wxPdfDocument::PutPages()
     if (!m_isPdfA1 && m_PDFVersion > wxS("1.3"))
     {
       Out("/Group <</Type /Group /S /Transparency /CS /DeviceRGB>>");
+    }
+    if (m_isPdfTagged)
+    {
+      wxPdfOffsetHashMap::iterator sp = m_pageStructParents->find(n);
+      if (sp != m_pageStructParents->end())
+      {
+        OutAscii(wxString::Format(wxS("/StructParents %d"), sp->second));
+      }
     }
     OutAscii(wxString::Format(wxS("/Contents %d 0 R>>"), m_n+1));
     Out("endobj");
@@ -2568,6 +2605,114 @@ wxPdfDocument::PutJavaScript()
   }
 }
 
+void
+wxPdfDocument::PutStructureTree()
+{
+  size_t count = m_structElements.GetCount();
+  if (count == 0)
+    return;
+
+  // Pre-allocate the struct tree root object ID so struct elements can reference it
+  m_nStructTreeRoot = GetNewObjId();
+
+  // Step A: output one struct element object per figure
+  size_t i;
+  for (i = 0; i < count; i++)
+  {
+    wxPdfStructElement* elem = (wxPdfStructElement*) m_structElements[i];
+    NewObj();
+    elem->m_objId = m_n;
+    Out("<<");
+    Out("/Type /StructElem");
+    OutAscii(wxString::Format(wxS("/S /%s"), elem->m_tag));
+    Out("/Alt ", false);
+    OutTextstring(elem->m_altText);
+    OutAscii(wxString::Format(wxS("/P %d 0 R"), m_nStructTreeRoot));
+    OutAscii(wxString::Format(wxS("/Pg %d 0 R"), m_firstPageId + 2*(elem->m_page-1)));
+    OutAscii(wxString::Format(wxS("/K %d"), elem->m_mcid));
+    Out(">>");
+    Out("endobj");
+  }
+
+  // Step B: for each page that has struct elements, output a parent tree array
+  // indexed by MCID; collect unique pages in first-appearance order
+  wxArrayInt pages;
+  for (i = 0; i < count; i++)
+  {
+    int page = ((wxPdfStructElement*) m_structElements[i])->m_page;
+    if (pages.Index(page) == wxNOT_FOUND)
+      pages.Add(page);
+  }
+
+  wxArrayInt parentArrayObjIds;
+  size_t pi;
+  for (pi = 0; pi < pages.GetCount(); pi++)
+  {
+    int page = pages[(int) pi];
+
+    // Find max MCID on this page to size the array
+    int maxMcid = 0;
+    for (i = 0; i < count; i++)
+    {
+      wxPdfStructElement* elem = (wxPdfStructElement*) m_structElements[i];
+      if (elem->m_page == page && elem->m_mcid > maxMcid)
+        maxMcid = elem->m_mcid;
+    }
+
+    // Build an array of object IDs indexed by MCID (0 = absent)
+    wxArrayInt objIds;
+    objIds.Add(0, maxMcid + 1);
+    for (i = 0; i < count; i++)
+    {
+      wxPdfStructElement* elem = (wxPdfStructElement*) m_structElements[i];
+      if (elem->m_page == page)
+        objIds[elem->m_mcid] = elem->m_objId;
+    }
+
+    NewObj();
+    parentArrayObjIds.Add(m_n);
+    Out("[", false);
+    int j;
+    for (j = 0; j <= maxMcid; j++)
+    {
+      if (objIds[j] > 0)
+        OutAscii(wxString::Format(wxS("%d 0 R "), objIds[j]), false);
+      else
+        Out("null ", false);
+    }
+    Out("]");
+    Out("endobj");
+  }
+
+  // Step C: output the parent tree number-tree
+  NewObj();
+  int parentTreeObjId = m_n;
+  Out("<<");
+  Out("/Type /ParentTree");
+  Out("/Nums [", false);
+  for (pi = 0; pi < pages.GetCount(); pi++)
+  {
+    OutAscii(wxString::Format(wxS("%d %d 0 R "), (int) pi, parentArrayObjIds[(int) pi]), false);
+  }
+  Out("]");
+  Out(">>");
+  Out("endobj");
+
+  // Step D: output the struct tree root at its pre-allocated ID
+  NewObj(m_nStructTreeRoot);
+  Out("<<");
+  Out("/Type /StructTreeRoot");
+  Out("/K [", false);
+  for (i = 0; i < count; i++)
+  {
+    OutAscii(wxString::Format(wxS("%d 0 R "), ((wxPdfStructElement*) m_structElements[i])->m_objId), false);
+  }
+  Out("]");
+  OutAscii(wxString::Format(wxS("/ParentTree %d 0 R"), parentTreeObjId));
+  Out(">>");
+  Out("endobj");
+}
+
 #include "srgb2014icc.h"
 
 void
@@ -2735,6 +2880,7 @@ wxPdfDocument::PutResources()
   PutBookmarks();
   PutJavaScript();
   PutFiles();
+  PutStructureTree();
 
   // PDF/A-1 conformance
   if (m_isPdfA1)

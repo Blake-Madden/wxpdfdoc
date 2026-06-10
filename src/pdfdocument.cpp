@@ -280,6 +280,13 @@ wxPdfDocument::Initialize(int orientation)
 
   m_isPdfA1 = false;
 
+  m_isPdfTagged      = false;
+  m_mcid             = 0;
+  m_nStructTreeRoot  = 0;
+  m_artifactDepth    = 0;
+  m_figureDepth      = 0;
+  m_pageStructParents = new wxPdfOffsetHashMap();
+
   m_translate = false;
 
   m_zapfdingbats = 0;
@@ -494,6 +501,13 @@ wxPdfDocument::~wxPdfDocument()
     }
   }
   delete m_attachments;
+
+  size_t se;
+  for (se = 0; se < m_structElements.GetCount(); se++)
+  {
+    delete (wxPdfStructElement*) m_structElements[se];
+  }
+  delete m_pageStructParents;
 
   delete m_orientationChanges;
   delete m_pageSizes;
@@ -2517,6 +2531,60 @@ wxPdfDocument::AttachFile(const wxString& fileName, const wxString& attachName, 
     wxLogDebug(wxS("*** Attachment file '%s' does not exist."), fileName.c_str());
   }
   return ok;
+}
+
+void
+wxPdfDocument::BeginArtifact()
+{
+  m_isPdfTagged = true;
+  ++m_artifactDepth;
+  if (m_artifactDepth == 1)
+  {
+    Out("/Artifact BDC");
+  }
+}
+
+void
+wxPdfDocument::EndArtifact()
+{
+  if (m_artifactDepth == 1)
+  {
+    Out("EMC");
+  }
+  if (m_artifactDepth > 0)
+  {
+    --m_artifactDepth;
+  }
+}
+
+void
+wxPdfDocument::BeginFigure(const wxString& altText)
+{
+  m_isPdfTagged = true;
+  wxPdfStructElement* elem = new wxPdfStructElement();
+  elem->m_tag     = wxS("Figure");
+  elem->m_altText = altText;
+  elem->m_mcid    = m_mcid++;
+  elem->m_page    = m_page;
+  elem->m_objId   = 0;
+  m_structElements.Add(elem);
+  ++m_figureDepth;
+  // Include ActualText in the inline properties so text extraction returns the
+  // alt description even in viewers that do not walk the structure tree.
+  Out("/Figure <<", false);
+  OutAscii(wxString::Format(wxS("/MCID %d /ActualText "), elem->m_mcid), false);
+  OutTextstring(altText, false);
+  Out(">> BDC");
+}
+
+void
+wxPdfDocument::EndFigure()
+{
+  if (m_figureDepth > 0)
+  {
+    --m_figureDepth;
+    Out("EMC");
+  }
 }
 
 void

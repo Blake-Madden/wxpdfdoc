@@ -14,6 +14,8 @@
 #include <wx/printdlg.h>
 #include <wx/scrolwin.h>
 
+#include "wx/pdfdocument.h"
+
 class MyApp : public wxApp
 {
 public:
@@ -78,6 +80,9 @@ constexpr int PDFGC_SCENE_WIDTH  = 580;
 constexpr int PDFGC_SCENE_HEIGHT = 820;
 
 // Renders the demo scene.
-void DrawScene(wxGraphicsContext& gc, const wxSize& size);
+// Pass a wxPdfDocument* to add accessibility tagging; pass nullptr for
+// screen and print rendering where tagging is not applicable.
+void DrawScene(wxGraphicsContext& gc, const wxSize& size,
+               wxPdfDocument* pdfDoc = nullptr);
 
 #endif // SAMPLES_PDFGC_PDFGC_H_

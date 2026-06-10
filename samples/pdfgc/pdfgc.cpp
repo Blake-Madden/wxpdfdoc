@@ -58,11 +58,13 @@ namespace
 {
 
 void DrawSectionLabel(wxGraphicsContext& gc, const wxString& label,
-                      double x, double y)
+                      double x, double y, wxPdfDocument* pdfDoc = nullptr)
 {
     gc.SetFont(wxFontInfo(9).FaceName("Arial").Italic(),
                wxColour(80, 80, 80));
+    if (pdfDoc) pdfDoc->BeginArtifact();
     gc.DrawText(label, x, y);
+    if (pdfDoc) pdfDoc->EndArtifact();
 }
 
 // Five-point star, centred on (0,0), drawn with point at top.
@@ -92,7 +94,8 @@ wxGraphicsPath BuildStarPath(wxGraphicsContext& gc)
 
 } // namespace
 
-void DrawScene(wxGraphicsContext& gc, const wxSize& size)
+void DrawScene(wxGraphicsContext& gc, const wxSize& size,
+               wxPdfDocument* pdfDoc /*= nullptr*/)
 {
     gc.SetPen(*wxTRANSPARENT_PEN);
     gc.SetBrush(*wxWHITE_BRUSH);
@@ -104,7 +107,12 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
 
     // Shapes
     DrawSectionLabel(gc, wxS("Shapes (rect, rounded-rect, ellipse, stroked rect)"),
-                     10, 35);
+                     10, 35, pdfDoc);
+
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Shapes section: a cyan-filled rectangle, "
+                                "a light-blue rounded rectangle, "
+                                "a golden ellipse, and a magenta outlined rectangle."));
     gc.SetPen(*wxBLACK_PEN);
     gc.SetBrush(*wxCYAN_BRUSH);
     gc.DrawRectangle(10, 50, 100, 70);
@@ -118,12 +126,17 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
     gc.SetBrush(*wxTRANSPARENT_BRUSH);
     gc.SetPen(wxPenInfo(wxColour("MAGENTA")).Width(3));
     gc.DrawRectangle(340, 50, 100, 70);
+    if (pdfDoc) pdfDoc->EndFigure();
 
     // Paths
     //------
     DrawSectionLabel(gc, wxS("Paths (DrawPath star, StrokePath zigzag, mixed curves)"),
-                     10, 140);
+                     10, 140, pdfDoc);
 
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Paths section: a filled five-point green star, "
+                                "an orange zigzag stroke, "
+                                "and a magenta Bezier curve ending in a small arc."));
     gc.PushState();
     gc.Translate(60, 200);
     gc.SetPen(wxPenInfo(wxColour("FOREST GREEN")).Width(2));
@@ -154,12 +167,16 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
         gc.SetBrush(*wxTRANSPARENT_BRUSH);
         gc.StrokePath(bez);
     }
+    if (pdfDoc) pdfDoc->EndFigure();
 
     // Gradients
     //----------
     DrawSectionLabel(gc, wxS("Gradients (linear/radial brush, gradient path fill, linear/radial pen)"),
-                     10, 250);
+                     10, 250, pdfDoc);
 
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Gradients section: rectangles and stars demonstrating "
+                                "linear and radial gradient fills and strokes."));
     wxGraphicsGradientStops linStops(wxColour(0, 80, 200),
                                      wxColour(255, 240, 80));
     linStops.Add(wxColour(220, 60, 60), 0.5f);
@@ -242,12 +259,17 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
     gc.SetBrush(gc.CreateRadialGradientBrush(0, 0, 0, 0, 35, radStops));
     gc.DrawPath(BuildStarPath(gc));
     gc.PopState();
+    if (pdfDoc) pdfDoc->EndFigure();
 
     // Transforms
     //----------------
     DrawSectionLabel(gc, wxS("Transforms (Push/Pop, Translate, Rotate, Scale, "
-                         "matrix-applied path)"), 10, 410);
+                         "matrix-applied path)"), 10, 410, pdfDoc);
 
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Transforms section: five stars demonstrating "
+                                "identity, 30-degree rotation, uniform scale, "
+                                "anisotropic scale, and a matrix-applied transform."));
     gc.SetPen(wxPenInfo(*wxBLACK).Width(1));
     gc.SetBrush(wxBrush(wxColour(255, 200, 80)));
 
@@ -279,12 +301,19 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
         gc.SetBrush(wxBrush(wxColour("LIGHT BLUE")));
         gc.DrawPath(p);
     }
+    if (pdfDoc) pdfDoc->EndFigure();
 
     // Clipping, layers, composition modes
     //------------------------------------
     DrawSectionLabel(gc, wxS("Clipping, layer alpha, composition modes"),
-                     10, 540);
+                     10, 540, pdfDoc);
 
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Clipping and layers section: a goldenrod ellipse "
+                                "clipped to a rectangle, semi-transparent red and blue "
+                                "rectangles in an alpha layer, and three pairs of "
+                                "overlapping rectangles demonstrating OVER, ADD, and "
+                                "DIFF composition modes."));
     gc.PushState();
     gc.Clip(20, 560, 90, 50);
     gc.SetPen(*wxBLACK_PEN);
@@ -326,15 +355,23 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
 
             gc.SetCompositionMode(wxCOMPOSITION_OVER);
             gc.SetFont(wxFontInfo(8).FaceName("Arial"), *wxBLACK);
+            if (pdfDoc) pdfDoc->BeginArtifact();
             gc.DrawText(entry.label, cx + 4, 635);
+            if (pdfDoc) pdfDoc->EndArtifact();
             cx += 90;
         }
     }
+    if (pdfDoc) pdfDoc->EndFigure();
 
     // ---- Bitmaps + rotated text ------------------------------------------
     DrawSectionLabel(gc, wxS("Bitmaps (32, 48, 64 px) and rotated text"),
-                     10, 670);
+                     10, 670, pdfDoc);
 
+    if (pdfDoc)
+        pdfDoc->BeginFigure(wxS("Bitmaps and text section: the wxPdfDocument logo "
+                                "at 32, 48, and 64 pixels, a clipped 80-pixel variant, "
+                                "and the phrase \"Rotated text\" rendered twice at "
+                                "-12 degrees and 168 degrees."));
     {
         wxBitmap bmp(pdfgc_bitmap_xpm);
         wxGraphicsBitmap gbmp = gc.CreateBitmap(bmp);
@@ -357,6 +394,7 @@ void DrawScene(wxGraphicsContext& gc, const wxSize& size)
                wxColour(40, 40, 80));
     gc.DrawText("Rotated text", 320, 720, wxDegToRad(-12.0));
     gc.DrawText("Rotated text", 460, 720, wxDegToRad(-12.0 + 180.0));
+    if (pdfDoc) pdfDoc->EndFigure();
 }
 
 // ---------------------------------------------------------------------------
@@ -461,7 +499,8 @@ void MyFrame::OnSavePdf(wxCommandEvent& WXUNUSED(event))
             if (gc)
             {
                 DrawScene(*gc,
-                          wxSize(PDFGC_SCENE_WIDTH, PDFGC_SCENE_HEIGHT));
+                          wxSize(PDFGC_SCENE_WIDTH, PDFGC_SCENE_HEIGHT),
+                          dc.GetPdfDocument());
             }
             else
             {
@@ -505,7 +544,8 @@ void MyFrame::OnSavePdfStandAlone(wxCommandEvent& WXUNUSED(event))
         if (gc)
         {
             DrawScene(*gc,
-                      wxSize(PDFGC_SCENE_WIDTH, PDFGC_SCENE_HEIGHT));
+                      wxSize(PDFGC_SCENE_WIDTH, PDFGC_SCENE_HEIGHT),
+                      &doc);
             delete gc;
         }
         else

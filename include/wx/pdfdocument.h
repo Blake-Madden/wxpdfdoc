@@ -142,6 +142,16 @@ WX_DECLARE_STRING_HASH_MAP_WITH_DECL(wxPdfIndirectObject*, wxPdfRadioGroupMap, c
 /// Hash map class for parsers
 WX_DECLARE_STRING_HASH_MAP_WITH_DECL(wxPdfParser*, wxPdfParserMap, class WXDLLIMPEXP_PDFDOC);
 
+/// Internal record for a tagged PDF structure element (e.g. Figure with alt text)
+struct wxPdfStructElement
+{
+  wxString m_tag;      ///< structure type name (e.g. "Figure")
+  wxString m_altText;  ///< alternate text read by screen readers
+  int      m_mcid;     ///< page-local marked content ID
+  int      m_page;     ///< 1-based page number
+  int      m_objId;    ///< PDF object id assigned during output
+};
+
 /// Class representing a PDF document.
 #if WXPDFDOC_INHERIT_WXOBJECT
 class WXDLLIMPEXP_PDFDOC wxPdfDocument : public wxObject
@@ -3430,6 +3440,41 @@ public:
   */
   virtual void LeaveLayer();
 
+  /**
+  * \brief Begin marking content as a layout artifact (invisible to screen readers).
+  * \details Marks the following content as a layout artifact that assistive technology
+  *  will ignore entirely. Use EndArtifact() to close the block.
+  * \note Artifact blocks may not cross page boundaries.
+  * \see EndArtifact(), BeginFigure()
+  */
+  virtual void BeginArtifact();
+
+  /**
+  * \brief End artifact marking.
+  * \details Ends the most recent block opened with BeginArtifact().
+  * \see BeginArtifact()
+  */
+  virtual void EndArtifact();
+
+  /**
+  * \brief Begin a figure structure element with alternate text.
+  * \details Wraps the following content in a PDF Figure structure element. Assistive
+  *  technology reads \a altText instead of interpreting the raw content,
+  *  analogous to the \c alt attribute on an HTML image. Use EndFigure() to
+  *  close the block.
+  * \param altText description read by screen readers in place of the figure content
+  * \note Figure blocks may not cross page boundaries.
+  * \see EndFigure(), BeginArtifact()
+  */
+  virtual void BeginFigure(const wxString& altText);
+
+  /**
+  * \brief End a figure structure element.
+  * \details Ends the most recent block opened with BeginFigure().
+  * \see BeginFigure()
+  */
+  virtual void EndFigure();
+
   /// Attach file
   /**
   * Attaches a file to the PDF document.
@@ -3688,6 +3733,9 @@ protected:
 
   /// Add attached files
   virtual void PutFiles();
+
+  /// Write tagged PDF structure tree objects
+  virtual void PutStructureTree();
 
   /// Add resource dictionary
   virtual void PutResourceDict();
@@ -4023,6 +4071,15 @@ private:
   bool                 m_isPdfA1;             ///< flag whether document should conform with PDF/A-1
   int                  m_nMetaData;           ///< object number of meta data
   int                  m_nColourProfile;      ///< object number of colour profile
+
+  // Tagged PDF (accessibility)
+  bool                 m_isPdfTagged;         ///< flag whether any tagged PDF content has been added
+  int                  m_mcid;               ///< page-local marked content ID counter (reset each page)
+  int                  m_nStructTreeRoot;    ///< PDF object id of the structure tree root
+  int                  m_artifactDepth;      ///< nesting depth of BeginArtifact calls
+  int                  m_figureDepth;        ///< nesting depth of BeginFigure calls
+  wxArrayPtrVoid       m_structElements;     ///< list of heap-allocated wxPdfStructElement records
+  wxPdfOffsetHashMap*  m_pageStructParents;  ///< map: page number -> StructParents index
 
   bool                 m_translate;           ///< flag whether messages in msg tags should be translated
 
